@@ -1,0 +1,201 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <aside
+    th:fragment="aside"
+    class="x-aside"
+    th:with="sb=${theme.config.sidebar},
+             ep=${theme.config.epic},
+             trendsMode=${sb?.trends ?: ('tag')},
+             trendsRaw=${#conversions.convert(sb?.trends_count ?: (6), 'java.lang.Integer')},
+             trendsCount=${trendsRaw < 1 ? 1 : trendsRaw},
+             follow=${sb?.sticky_widgets ?: ({'promo','trends','follow','epic','footer'})},
+             promoLinkRaw=${#strings.trim(sb?.promo_link ?: '')}, promoLink=${#strings.isEmpty(promoLinkRaw) ? '/rss.xml' : (#strings.startsWith(promoLinkRaw, '/') or #strings.startsWith(promoLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'sms:') ? promoLinkRaw : 'https://' + promoLinkRaw)},
+             epicMoreRaw=${#strings.trim(ep?.more_link ?: '')}, epicMore=${#strings.isEmpty(epicMoreRaw) ? 'https://store.epicgames.com/free-games' : (#strings.startsWith(epicMoreRaw, '/') or #strings.startsWith(epicMoreRaw, '#') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'sms:') ? epicMoreRaw : 'https://' + epicMoreRaw)}"
+  >
+    <!--/* 搜索：吸在右栏顶部，输入时下面直接掉出建议 */-->
+    <div class="x-search-wrap" th:if="${sb?.search != 'off'}">
+      <form class="x-search" role="search" data-search onsubmit="return false">
+        <iconify-icon icon="ri:search-line" aria-hidden="true"></iconify-icon>
+        <input
+          type="search"
+          data-search-input
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-haspopup="listbox"
+          th:placeholder="${sb?.search_placeholder ?: (#messages.msg('common.search'))}"
+          th:aria-label="#{a11y.searchPosts}"
+          autocomplete="off"
+        />
+        <button class="x-search-clear" type="button" data-search-clear th:aria-label="#{a11y.clear}">
+          <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+        </button>
+        <div class="x-suggest" data-search-suggest role="listbox" th:aria-label="#{a11y.searchSuggest}"></div>
+      </form>
+    </div>
+
+    <!--/* 带 is-follow 的小组件会被 CSS 排到下面，由 theme.js 的 initAsideFollow 让它们跟着页面走；
+         不带的留在上面随页面滚走。哪些跟随由「右栏 → 跟随滚动的小组件」决定 */-->
+    <div class="x-aside-inner" data-aside-inner>
+      <!--/* 订阅卡 */-->
+      <section class="x-card" th:if="${sb?.promo != 'off'}" th:classappend="${#lists.contains(follow, 'promo')} ? 'is-follow'">
+        <h2 class="x-card-title" th:text="${sb?.promo_title ?: (#messages.msg('default.promoTitle'))}"></h2>
+        <div class="x-card-body">
+          <p class="x-card-text" th:text="${sb?.promo_text ?: (#messages.msg('default.promoText'))}"></p>
+          <a
+            class="x-btn x-btn--accent"
+            th:href="@{${promoLink}}"
+            th:text="${sb?.promo_button ?: (#messages.msg('common.subscribe'))}"
+          ></a>
+        </div>
+      </section>
+
+      <!--/* 趋势：标签或分类按文章数排。顺序交给 JS 排，模板只管把数字带出去 */-->
+      <section
+        class="x-card"
+        th:if="${trendsMode != 'off'}"
+        th:classappend="${#lists.contains(follow, 'trends')} ? 'is-follow'"
+        data-trends
+        th:attr="data-trends-count=${trendsCount}"
+      >
+        <h2 class="x-card-title" th:text="${sb?.trends_title ?: (#messages.msg('default.trendsTitle'))}"></h2>
+
+        <!--/* 标签可能有几百个，而卡片只显示前几名。先把文章数排一遍，取出第 N 名的数当分数线，
+             再按分数线过滤——服务端只吐出够得着前 N 的那几行，剩下的排序和裁剪交给 theme.js。
+             postCount 实测可能是 null，先滤掉，否则排序会 NPE */-->
+        <th:block
+          th:if="${trendsMode == 'tag'}"
+          th:with="tags=${tagFinder.listAll()},
+                   tagCounts=${#lists.sort(tags.?[postCount != null].![postCount])},
+                   tagMin=${#lists.size(tagCounts) > trendsCount ? tagCounts[#lists.size(tagCounts) - trendsCount] : -1}"
+        >
+          <a
+            th:each="tag, st : ${tags}"
+            th:if="${tag.postCount != null and tag.postCount > 0 and tag.postCount >= tagMin}"
+            class="x-card-row"
+            th:href="@{${tag.status.permalink}}"
+            th:attr="data-trend-count=${tag.postCount} ?: 0"
+          >
+            <div class="x-card-row-main">
+              <div class="x-card-row-label">
+                <span data-trend-rank></span>[[#{label.tag}]]
+              </div>
+              <div class="x-card-row-title" th:text="'#' + ${tag.spec.displayName}"></div>
+              <div class="x-card-row-label" th:with="cnt=${tag.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+          </a>
+          <p class="x-card-body x-card-text" th:if="${#lists.isEmpty(tags.?[postCount != null and postCount > 0])}" style="margin: 0" th:text="#{empty.noTagsYet}">还没有标签。</p>
+        </th:block>
+
+        <th:block
+          th:if="${trendsMode == 'category'}"
+          th:with="cats=${categoryFinder.listAll()},
+                   catCounts=${#lists.sort(cats.?[postCount != null].![postCount])},
+                   catMin=${#lists.size(catCounts) > trendsCount ? catCounts[#lists.size(catCounts) - trendsCount] : -1}"
+        >
+          <a
+            th:each="cat, st : ${cats}"
+            th:if="${cat.postCount != null and cat.postCount > 0 and cat.postCount >= catMin}"
+            class="x-card-row"
+            th:href="@{${cat.status.permalink}}"
+            th:attr="data-trend-count=${cat.postCount} ?: 0"
+          >
+            <div class="x-card-row-main">
+              <div class="x-card-row-label">
+                <span data-trend-rank></span>[[#{label.category}]]
+              </div>
+              <div class="x-card-row-title" th:text="${cat.spec.displayName}"></div>
+              <div class="x-card-row-label" th:with="cnt=${cat.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+          </a>
+          <p class="x-card-body x-card-text" th:if="${#lists.isEmpty(cats.?[postCount != null and postCount > 0])}" style="margin: 0" th:text="#{empty.noCategoriesYet}">还没有分类。</p>
+        </th:block>
+
+        <a
+          class="x-card-more"
+          th:if="${trendsMode == 'tag'
+            ? not #lists.isEmpty(tagFinder.listAll().?[postCount != null and postCount > 0])
+            : not #lists.isEmpty(categoryFinder.listAll().?[postCount != null and postCount > 0])}"
+          th:href="@{${trendsMode == 'tag' ? site.routes.tagsUri : site.routes.categoriesUri}}"
+          th:text="${trendsMode == 'tag' ? #messages.msg('default.moreTags') : #messages.msg('default.moreCategories')}"
+        ></a>
+      </section>
+
+      <!--/* 推荐关注 */-->
+      <section
+        class="x-card"
+        th:if="${sb?.follow != 'off' and not #lists.isEmpty(sb?.follow_items)}"
+        th:classappend="${#lists.contains(follow, 'follow')} ? 'is-follow'"
+      >
+        <h2 class="x-card-title" th:text="${sb?.follow_title ?: (#messages.msg('default.followTitle'))}"></h2>
+        <div
+          class="x-follow-row"
+          th:each="item : ${sb.follow_items}"
+          th:if="${not #strings.isEmpty(item.name) or not #strings.isEmpty(item.handle)}"
+          th:with="itemLinkRaw=${#strings.trim(item.link ?: '')}, itemLink=${#strings.isEmpty(itemLinkRaw) ? '#' : (#strings.startsWith(itemLinkRaw, '/') or #strings.startsWith(itemLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'sms:') ? itemLinkRaw : 'https://' + itemLinkRaw)}"
+        >
+          <img
+            class="x-avatar"
+            th:src="${item.avatar ?: ('/themes/theme-x/assets/images/avatar.svg')}"
+            alt=""
+            loading="lazy"
+          />
+          <div class="x-follow-meta">
+            <a th:href="@{${itemLink}}" th:text="${item.name ?: (item.handle)}" target="_blank" rel="noopener"></a>
+            <span th:if="${not #strings.isEmpty(item.handle)}" th:text="'@' + ${item.handle}"></span>
+          </div>
+          <button
+            class="x-btn x-btn--sm"
+            type="button"
+            data-follow
+            th:attr="data-follow-key=${item.handle ?: (item.name)}"
+           th:text="#{common.follow}">
+            关注
+          </button>
+        </div>
+      </section>
+
+      <!--/* Epic 限免：数据由访客浏览器去拿（见 theme.js 的 initEpic），拿到之前和拿不到的时候整块不出现 */-->
+      <section
+        class="x-card x-epic"
+        th:if="${ep?.enabled == 'on'}"
+        th:classappend="${#lists.contains(follow, 'epic')} ? 'is-follow'"
+        data-epic="card"
+        hidden
+      >
+        <h2 class="x-card-title" th:text="${ep?.title ?: (#messages.msg('epic.title'))}">Epic 限免</h2>
+        <div data-epic-list></div>
+        <a
+          class="x-card-more"
+          th:href="@{${epicMore}}"
+          th:attr="target=${#strings.isEmpty(ep?.more_link)} ? '_blank' : null, rel=${#strings.isEmpty(ep?.more_link)} ? 'noopener' : null"
+          th:text="#{common.showMore}"
+        >显示更多</a>
+      </section>
+
+      <!--/* 页脚 */-->
+      <nav class="x-footer-links" th:aria-label="#{a11y.footer}" th:classappend="${#lists.contains(follow, 'footer')} ? 'is-follow'">
+        <a
+          th:each="l : ${theme.config.sidebar?.footer_links}"
+          th:if="${not #strings.isEmpty(l.text)}"
+          th:with="footLinkRaw=${#strings.trim(l.link ?: '')}, footLink=${#strings.isEmpty(footLinkRaw) ? '#' : (#strings.startsWith(footLinkRaw, '/') or #strings.startsWith(footLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(footLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(footLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(footLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(footLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(footLinkRaw), 'sms:') ? footLinkRaw : 'https://' + footLinkRaw)}"
+          th:href="@{${footLink}}"
+          th:text="${l.text}"
+        ></a>
+        <a href="/rss.xml">RSS</a>
+        <a href="/sitemap.xml" th:text="#{common.sitemap}">站点地图</a>
+        <span
+          th:text="${theme.config.sidebar?.copyright ?: ('© ' + #temporals.year(#temporals.createNow()) + ' ' + site.title)}"
+        ></span>
+        <!--/* 备案号必须能点到工信部去核验，不能只是一串字 */-->
+        <a
+          th:if="${not #strings.isEmpty(sb?.icp)}"
+          class="x-icp-link"
+          href="https://beian.miit.gov.cn/"
+          target="_blank"
+          rel="noopener"
+          th:text="${#strings.trim(sb.icp)}"
+        ></a>
+      </nav>
+    </div>
+  </aside>
+</th:block>

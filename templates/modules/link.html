@@ -1,0 +1,33 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/*
+    一行一个站点，长得像 X 的「推荐关注」。
+    单独放在 module 里而不是写在 links.html 末尾：th:fragment 并不会阻止自身被渲染，
+    定义留在页面模板里会在页尾多吐一行空条目出来。
+  */-->
+  <th:block th:fragment="linkRow(link)" th:with="urlRaw=${#strings.trim(link.spec.url ?: '')}, url=${#strings.isEmpty(urlRaw) ? '#' : (#strings.startsWith(urlRaw, '/') or #strings.startsWith(urlRaw, '#') or #strings.startsWith(#strings.toLowerCase(urlRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(urlRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(urlRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(urlRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(urlRaw), 'sms:') ? urlRaw : 'https://' + urlRaw)}">
+    <div class="x-follow-row" style="border-bottom: 1px solid var(--border); padding: 12px 16px">
+      <a th:href="${url}" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
+        <img
+          class="x-avatar x-avatar--lg"
+          th:src="${link.spec.logo ?: '/themes/theme-x/assets/images/avatar.svg'}"
+          th:alt="${link.spec.displayName}"
+          loading="lazy"
+          onerror="this.src='/themes/theme-x/assets/images/avatar.svg'"
+        />
+      </a>
+      <div class="x-follow-meta">
+        <a th:href="${url}" th:text="${link.spec.displayName}" target="_blank" rel="noopener noreferrer"></a>
+        <!--/* 末尾先补一个斜杠：没有路径的地址（https://halo.run）直接截会拿到 null */-->
+        <span
+          th:text="'@' + ${#strings.substringBefore(#strings.replace(#strings.replace(link.spec.url, 'https://', ''), 'http://', '') + '/', '/')}"
+        ></span>
+        <span
+          th:if="${not #strings.isEmpty(link.spec.description)}"
+          style="color: var(--text); margin-top: 4px"
+          th:text="${link.spec.description}"
+        ></span>
+      </div>
+      <a class="x-btn" th:href="${url}" target="_blank" rel="noopener noreferrer" th:text="#{common.visit}">访问</a>
+    </div>
+  </th:block>
+</th:block>

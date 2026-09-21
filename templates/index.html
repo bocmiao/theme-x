@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=${site.title + (posts.page > 1 ? ' - ' + #messages.msg('title.pageN', posts.page) : '')}, desc=${#strings.isEmpty(site.seo?.description) ? site.subtitle : site.seo.description}, image=${theme.config.profile?.banner}, canonical=${posts.page > 1 ? '/page/' + posts.page : site.url}, type='website')}"
+    ></th:block>
+    <!--/* 结构化数据：站点本身 */-->
+    <script
+      type="application/ld+json"
+      th:inline="javascript"
+      th:with="ldName=${#strings.replace(site.title ?: '', '&lt;', '')},
+               ldDesc=${#strings.replace(site.subtitle ?: '', '&lt;', '')}"
+    >
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": /*[[${ldName}]]*/ "",
+        "description": /*[[${ldDesc}]]*/ "",
+        "url": /*[[${site.url}]]*/ ""
+      }
+    </script>
+
+    <!--/* 超出总页数的地址 Halo 照样渲染，是一串空页面，别让爬虫收进去 */-->
+
+    <meta name="robots" content="noindex,follow" th:if="${posts.page > posts.totalPages}" />
+
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="hm=${theme.config.home},
+               pf=${theme.config.profile},
+               pinnedName=${hm?.pinned},
+               tabTwo=${hm?.tab_secondary == null ? #messages.msg('default.tabSecondary') : hm.tab_secondary},
+               postLinkRaw=${#strings.trim(theme.config.nav?.post_button_link ?: '')}, postLink=${#strings.isEmpty(postLinkRaw) ? '/console/posts/editor' : (#strings.startsWith(postLinkRaw, '/') or #strings.startsWith(postLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'sms:') ? postLinkRaw : 'https://' + postLinkRaw)},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=true)}"></th:block>
+
+        <!--/* 和 X 一样不放「首页」标题行，标题只留给读屏器 */-->
+        <h1 class="visually-hidden" th:text="#{common.home}">首页</h1>
+
+        <header class="x-header" th:if="${not #strings.isEmpty(tabTwo)}">
+          <div class="x-tabs" role="tablist" th:aria-label="#{common.home}">
+            <button class="x-tab is-active" type="button" role="tab" id="x-tab-primary" aria-selected="true" data-tab="primary"><span th:text="${hm?.tab_primary ?: (#messages.msg('default.tabPrimary'))}"></span></button>
+            <button class="x-tab" type="button" role="tab" id="x-tab-secondary" aria-selected="false" tabindex="-1" data-tab="secondary"><span th:text="${tabTwo}"></span></button>
+          </div>
+        </header>
+
+        <!--/* 页面开着的时候后台又发了文章，这里冒出来提示 */-->
+        <button class="x-new-posts" type="button" data-new-posts hidden></button>
+
+        <!--/* 发帖框：点一下直接去后台编辑器 */-->
+        <div class="x-compose" th:if="${hm?.compose != 'off'}">
+          <img class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
+          <div class="x-compose-main">
+            <a
+              class="x-compose-field"
+              th:href="@{${postLink}}"
+              th:text="${hm?.compose_placeholder ?: (#messages.msg('default.composePlaceholder'))}"
+            ></a>
+            <div class="x-compose-bar">
+              <a class="x-compose-tool" th:href="@{/console/attachments}" th:title="#{a11y.image}" th:aria-label="#{a11y.image}">
+                <iconify-icon icon="ri:image-line" aria-hidden="true"></iconify-icon>
+              </a>
+              <a class="x-compose-tool" th:href="@{/console/posts}" th:title="#{a11y.postList}" th:aria-label="#{a11y.postList}">
+                <iconify-icon icon="ri:file-list-2-line" aria-hidden="true"></iconify-icon>
+              </a>
+              <a class="x-compose-tool" href="/rss.xml" title="RSS" aria-label="RSS">
+                <iconify-icon icon="ri:rss-line" aria-hidden="true"></iconify-icon>
+              </a>
+              <a
+                class="x-btn x-btn--accent"
+                th:href="@{${postLink}}"
+                th:text="${theme.config.nav?.post_button_text ?: (#messages.msg('common.compose'))}"
+              ></a>
+            </div>
+          </div>
+        </div>
+
+        <!--/* ============================================== 主时间线 ===== */-->
+        <div
+          class="x-timeline"
+          data-timeline
+          data-tab-panel="primary"
+          th:attr="data-latest=${posts.page == 1 and not #lists.isEmpty(posts.items)} ? ${posts.items[0].metadata.name} : null"
+        >
+          <!--/*
+            置顶：不能用 postFinder.getByName —— 它内部是 client.get()，文章一旦被删
+            会抛 ExtensionNotFoundException，整个首页跟着 500。这里改成在最近 200 篇里
+            按名字找，找不到就当没有置顶，页面照常。
+          */-->
+          <th:block th:if="${posts.page == 1 and not #strings.isEmpty(pinnedName)}">
+            <th:block th:each="p : ${postFinder.list(1, 200).items}">
+              <th:block th:if="${p.metadata.name == pinnedName}">
+                <th:block th:replace="~{modules/tweet :: tweet(post=${p}, context=#{action.pinned})}"></th:block>
+              </th:block>
+            </th:block>
+          </th:block>
+
+          <th:block th:each="post, st : ${posts.items}" th:with="eager=${posts.page == 1 and st.index &lt; 2}">
+            <th:block th:if="${post.metadata.name != pinnedName}">
+              <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+            </th:block>
+          </th:block>
+
+          <th:block th:if="${#lists.isEmpty(posts.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.quiet.title}, text=#{empty.quiet.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${posts})}"></th:block>
+
+        <!--/* ============================================== 第二个标签 ===
+             这里一开始是空的。内容点开才去取——取的是现成的分类页或归档页，
+             不这样的话每个访客的首屏都要白背几十条永远看不到的 HTML。
+        */-->
+        <th:block th:if="${not #strings.isEmpty(tabTwo)}">
+          <th:block
+            th:with="byCategory=${hm?.tab_secondary_source == 'category' and not #strings.isEmpty(hm?.tab_secondary_category)},
+                     catVo=${byCategory
+                       ? categoryFinder.listAll().^[metadata.name == '__${hm.tab_secondary_category}__']
+                       : null}"
+          >
+            <div
+              class="x-timeline"
+              data-timeline
+              data-tab-panel="secondary"
+              data-tab-limit="30"
+              th:attr="data-sort=${byCategory} ? null : 'visit',
+                       data-tab-fetch=${byCategory and catVo != null}
+                         ? ${catVo.status.permalink}
+                         : ${site.routes.archivesUri}"
+              hidden
+            ></div>
+          </th:block>
+        </th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='home')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='home', root=true)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

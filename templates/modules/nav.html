@@ -1,0 +1,127 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+  <!--/* 单个导航项：激活时换成实心图标并加粗 */-->
+  <th:block th:fragment="navItem(key, icon, iconActive, text, href, current)">
+    <li>
+      <a
+        class="x-nav-link"
+        th:classappend="${current == key} ? 'is-active'"
+        th:href="@{${href}}"
+        th:attr="aria-current=${current == key} ? 'page' : null, data-nav-key=${key}"
+        th:title="${text}"
+      >
+        <iconify-icon th:attr="icon=${current == key} ? ${iconActive} : ${icon}" aria-hidden="true"></iconify-icon>
+        <span th:text="${text}"></span>
+      </a>
+    </li>
+  </th:block>
+
+  <!--/* 左栏。窄屏（<1000px）整个隐藏，由 modules/mobile 顶上 */-->
+  <nav
+    th:fragment="nav(current)"
+    class="x-nav"
+    th:aria-label="#{a11y.mainNav}"
+    th:with="nv=${theme.config.nav},
+             pf=${theme.config.profile},
+             items=${nv?.items ?: ({'home','explore','categories','tags','bookmarks'})},
+             xname=${pf?.name ?: (site.title)},
+             xhandle=${pf?.handle ?: ('blog')},
+             xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))},
+             profileLinkRaw=${#strings.trim(nv?.profile_link ?: '')}, profileLink=${#strings.isEmpty(profileLinkRaw) ? '/about' : (#strings.startsWith(profileLinkRaw, '/') or #strings.startsWith(profileLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'sms:') ? profileLinkRaw : '/' + profileLinkRaw)},
+             postLinkRaw=${#strings.trim(nv?.post_button_link ?: '')}, postLink=${#strings.isEmpty(postLinkRaw) ? '/console/posts/editor' : (#strings.startsWith(postLinkRaw, '/') or #strings.startsWith(postLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'sms:') ? postLinkRaw : 'https://' + postLinkRaw)}"
+  >
+    <div class="x-nav-inner">
+      <a class="x-logo" th:href="@{/}" th:title="${site.title}" th:aria-label="#{common.home}">
+        <img th:if="${not #strings.isEmpty(nv?.logo)}" th:src="${nv.logo}" th:alt="${site.title}" />
+        <svg th:unless="${not #strings.isEmpty(nv?.logo)}" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+          ></path>
+        </svg>
+      </a>
+
+      <ul class="x-nav-list">
+        <th:block th:if="${#lists.contains(items, 'home')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='home', icon='ri:home-5-line', iconActive='ri:home-5-fill', text=#{common.home}, href='/', current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'explore')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='explore', icon='ri:hashtag', iconActive='ri:hashtag', text=#{common.explore}, href=${site.routes.archivesUri}, current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'categories')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='categories', icon='ri:list-check-2', iconActive='ri:list-check-2', text=#{common.categories}, href=${site.routes.categoriesUri}, current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'tags')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='tags', icon='ri:price-tag-3-line', iconActive='ri:price-tag-3-fill', text=#{common.tags}, href=${site.routes.tagsUri}, current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'bookmarks') and theme.config.features?.bookmarks != 'off'}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='bookmarks', icon='ri:bookmark-line', iconActive='ri:bookmark-fill', text=#{common.bookmarks}, href='/bookmarks', current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'moments')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='moments', icon='ri:chat-3-line', iconActive='ri:chat-3-fill', text=#{common.moments}, href='/moments', current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'photos')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='photos', icon='ri:image-2-line', iconActive='ri:image-2-fill', text=#{common.photos}, href='/photos', current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'links')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='links', icon='ri:group-line', iconActive='ri:group-fill', text=#{common.links}, href='/links', current=${current})}"
+          ></th:block>
+        </th:block>
+        <th:block th:if="${#lists.contains(items, 'profile')}">
+          <th:block
+            th:replace="~{modules/nav :: navItem(key='profile', icon='ri:user-line', iconActive='ri:user-fill', text=#{common.profile}, href=${profileLink}, current=${current})}"
+          ></th:block>
+        </th:block>
+
+        <!--/* 站长自己加的导航项 */-->
+        <li th:each="item : ${nv?.extra}" th:if="${not #strings.isEmpty(item.text)}" th:with="itemLinkRaw=${#strings.trim(item.link ?: '')}, itemLink=${#strings.isEmpty(itemLinkRaw) ? '#' : (#strings.startsWith(itemLinkRaw, '/') or #strings.startsWith(itemLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'sms:') ? itemLinkRaw : 'https://' + itemLinkRaw)}">
+          <a class="x-nav-link" th:href="@{${itemLink}}" th:title="${item.text}">
+            <iconify-icon th:attr="icon=${item.icon ?: ('ri:hashtag')}" aria-hidden="true"></iconify-icon>
+            <span th:text="${item.text}"></span>
+          </a>
+        </li>
+
+        <li>
+          <!--/* 弹出菜单本体在 modules/dialogs 里（.x-menu 是 fixed 定位，放哪都行，
+               挂在 body 末尾不会被左栏的滚动容器裁掉） */-->
+          <button class="x-nav-link" type="button" data-nav-more aria-haspopup="menu" aria-expanded="false" th:title="#{common.more}">
+            <iconify-icon icon="ri:more-line" aria-hidden="true"></iconify-icon>
+            <span th:text="#{common.more}">更多</span>
+          </button>
+        </li>
+      </ul>
+
+      <a
+        class="x-post-button"
+        th:href="@{${postLink}}"
+        th:title="${nv?.post_button_text ?: (#messages.msg('common.compose'))}"
+      >
+        <iconify-icon icon="ri:quill-pen-fill" aria-hidden="true"></iconify-icon>
+        <span th:text="${nv?.post_button_text ?: (#messages.msg('common.compose'))}"></span>
+      </a>
+
+      <!--/* 头像+昵称本来就该是「去我的主页」，之前绑的是显示设置，和上面的「更多」重复 */-->
+      <a class="x-nav-account" th:href="@{${profileLink}}" th:title="#{common.profile}">
+        <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" />
+        <span class="x-nav-account-meta">
+          <span class="x-nav-account-name" th:text="${xname}"></span>
+          <span class="x-nav-account-handle" th:text="'@' + ${xhandle}"></span>
+        </span>
+      </a>
+    </div>
+  </nav>
+</th:block>

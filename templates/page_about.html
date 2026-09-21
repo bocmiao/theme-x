@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html
+  th:lang="#{meta.lang}"
+  lang="zh-CN"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:halo="https://halo.run"
+>
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=${theme.config.profile?.bio ?: (site.subtitle)}, image=${theme.config.profile?.banner}, canonical=${singlePage.status.permalink}, type='profile')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="pf=${theme.config.profile},
+               stats=${siteStatsFinder.getStats()},
+               xname=${pf?.name ?: (site.title)},
+               xhandle=${pf?.handle ?: ('blog')},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))},
+               xbio=${pf?.bio ?: (site.subtitle)}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='profile')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <div class="x-header-title" th:text="${xname}"></div>
+              <div class="x-header-sub" th:with="cnt=${stats?.post ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <th:block
+          th:replace="~{modules/profile :: header(
+            name=${xname},
+            handle=${xhandle},
+            avatar=${xavatar},
+            bio=${xbio},
+            postCount=${stats?.post})}"
+        ></th:block>
+
+        <th:block th:replace="~{modules/profile :: tabs(current='about')}"></th:block>
+
+        <article style="padding: 16px; border-bottom: 1px solid var(--border)">
+          <div class="x-prose" data-prose th:utext="${singlePage.content.content}"></div>
+        </article>
+
+        <!--/* 最近发的几条，让「关于」页也有点时间线的味道 */-->
+        <th:block th:with="recent=${postFinder.list(1, 5)}">
+          <section th:if="${not #lists.isEmpty(recent.items)}">
+            <h2 class="x-section-head">
+              <span th:text="#{action.recentPosts}">最近的帖子</span>
+              <a class="x-btn x-btn--outline" th:href="@{${site.routes.archivesUri}}" th:text="#{common.all}">全部</a>
+            </h2>
+            <th:block th:each="post : ${recent.items}">
+              <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+            </th:block>
+          </section>
+        </th:block>
+
+        <section class="x-comments" id="comments" th:if="${singlePage.spec.allowComment and haloCommentEnabled}">
+          <th:block th:replace="~{modules/tweet :: commentsHead(count=${singlePage.stats.comment})}"></th:block>
+          <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="SinglePage" th:attr="name=${singlePage.metadata.name}" /></div>
+        </section>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='profile')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='profile', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

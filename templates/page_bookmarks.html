@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=#{desc.bookmarks}, image=null, canonical=${singlePage.status.permalink}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='bookmarks')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${singlePage.spec.title}"></h1>
+              <div class="x-header-sub" th:text="'@' + (${theme.config.profile?.handle ?: ('blog')})"></div>
+            </div>
+            <div class="x-header-actions">
+              <button class="x-icon-button" type="button" data-bookmarks-clear th:aria-label="#{a11y.clearBookmarks}" th:title="#{a11y.clearBookmarks}">
+                <iconify-icon icon="ri:delete-bin-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 标签栏紧贴标题栏：它在五个落点上的位置必须一样，否则来回点的时候整排会上下跳 */-->
+        <th:block th:replace="~{modules/profile :: tabs(current='bookmarks')}"></th:block>
+
+        <!--/* 页面本身的正文当说明文字用 */-->
+        <div
+          style="padding: 12px 16px; border-bottom: 1px solid var(--border)"
+          th:if="${not #strings.isEmpty(singlePage.status.excerpt)}"
+        >
+          <div class="x-prose" style="font-size: 1rem" th:utext="${singlePage.content.content}"></div>
+        </div>
+
+        <!--/* 收藏记录存在访客自己的浏览器里，所以整块交给 JS 渲染 */-->
+        <div data-bookmarks-list></div>
+
+        <div class="x-empty" data-bookmarks-empty hidden>
+          <h2 th:text="#{empty.bookmarks.title}">把帖子存起来以后再看</h2>
+          <p th:text="#{empty.bookmarks.text}">点任意一条帖子上的书签图标，它就会出现在这里。这份列表只存在这台设备的浏览器里，换个设备就看不到了。</p>
+          <a class="x-btn x-btn--accent" th:href="@{/}" th:text="#{common.browseHome}">去首页逛逛</a>
+        </div>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='bookmarks')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='bookmarks', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

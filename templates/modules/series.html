@@ -1,0 +1,50 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/*
+    系列 / 专栏。Halo 没有「系列」这种东西，所以借分类来表达：
+    把一个分类的自定义模板选成「系列」，它下面的文章就是一个系列，按发布时间从早到晚排。
+
+    取数据必须走 postFinder.list(Map) 并显式写 sort —— listByCategory 的默认排序是
+    「置顶优先 + 时间倒序」，系列里只要有一篇被置顶，篇号就全乱了。显式 sort 会盖过默认排序。
+    sort 的字段必须是建了索引的，spec.publishTime 可以；写错字段名整页 500。
+
+    一篇文章可以同时属于多个系列，所以这里是 th:each 而不是取第一个。
+  */-->
+  <th:block th:fragment="card(post)">
+    <th:block
+      th:each="sCat : ${post.categories == null ? null : post.categories.?[spec.template == 'category_series.html']}"
+      th:with="sCapRaw=${#conversions.convert(theme.config.post?.series_count ?: (30), 'java.lang.Integer')},
+               sCap=${sCapRaw &lt; 1 ? 1 : (sCapRaw > 200 ? 200 : sCapRaw)}"
+    >
+      <th:block
+        th:with="sItems=${postFinder.list({page: 1, size: sCap, categoryName: sCat.metadata.name, sort: {'spec.publishTime,asc'}}).items},
+                 sSize=${#lists.size(sItems)},
+                 sIdx=${sItems.![metadata.name].indexOf(post.metadata.name)}"
+      >
+        <!--/*
+          sIdx 为 -1 的情况是真的会发生的：分类勾了「不显示在列表中」，
+          或者这篇排在上限之外。那就整张卡片都不画，别显示「第 0 篇 / 共 0 篇」。
+        */-->
+        <div class="x-series" th:if="${sIdx >= 0}">
+          <a class="x-series-head" th:href="@{${sCat.status.permalink}}">
+            <iconify-icon icon="ri:stack-line" aria-hidden="true"></iconify-icon>
+            <span class="x-series-name">
+              <small th:text="#{series.label}">系列</small>
+              <b th:text="${sCat.spec.displayName}"></b>
+            </span>
+            <span class="x-series-pos" th:text="${#messages.msg('series.position', sIdx + 1, sSize)}"></span>
+          </a>
+
+          <ol class="x-series-list">
+            <li
+              th:each="sp, st : ${sItems}"
+              th:classappend="${st.index == sIdx} ? 'is-current'"
+            >
+              <span class="x-series-num" th:text="${st.count}"></span>
+              <a th:href="@{${sp.status.permalink}}" th:text="${sp.spec.title}"></a>
+            </li>
+          </ol>
+        </div>
+      </th:block>
+    </th:block>
+  </th:block>
+</th:block>

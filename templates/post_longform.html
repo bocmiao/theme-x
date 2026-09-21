@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html
+  th:lang="#{meta.lang}"
+  lang="zh-CN"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:halo="https://halo.run"
+>
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${post.spec.title} - ${site.title}|, desc=${post.status.excerpt}, image=${post.spec.cover}, canonical=${post.status.permalink}, type='article')}"
+    ></th:block>
+    <!--/* 结构化数据：给搜索引擎看的文章信息 */-->
+    <script
+      type="application/ld+json"
+      th:inline="javascript"
+      th:with="base=${#strings.endsWith(site.url, '/')
+                 ? #strings.substring(site.url, 0, #strings.length(site.url) - 1)
+                 : site.url},
+               cover=${#strings.isEmpty(post.spec.cover)
+                 ? null
+                 : (#strings.startsWith(post.spec.cover, 'http') ? post.spec.cover : base + post.spec.cover)},
+               ldTitle=${#strings.replace(post.spec.title ?: '', '&lt;', '')},
+               ldDesc=${#strings.replace(post.status.excerpt ?: '', '&lt;', '')},
+               ldAuthor=${#strings.replace(post.owner?.displayName ?: (site.title) ?: '', '&lt;', '')},
+               ldSite=${#strings.replace(site.title ?: '', '&lt;', '')}"
+    >
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": /*[[${ldTitle}]]*/ "",
+        "description": /*[[${ldDesc}]]*/ "",
+        "image": /*[[${cover}]]*/ null,
+        "datePublished": /*[[${post.spec.publishTime}]]*/ "",
+        "author": {
+          "@type": "Person",
+          "name": /*[[${ldAuthor}]]*/ ""
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": /*[[${ldSite}]]*/ ""
+        },
+        "mainEntityOfPage": /*[[${base + post.status.permalink}]]*/ ""
+      }
+    </script>
+
+  </head>
+  <body data-longform>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="pf=${theme.config.profile},
+               po=${theme.config.post},
+               owner=${post.owner},
+               xname=${owner?.displayName ?: (pf?.name ?: (site.title))},
+               xhandle=${owner?.name ?: (pf?.handle ?: ('blog'))},
+               xavatar=${owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${post.spec.title}" style="
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 1;
+                -webkit-box-orient: vertical;
+              "></h1>
+              <div class="x-header-sub" data-read-time th:if="${theme.config.post?.read_time != 'off'}"></div>
+            </div>
+            <div class="x-header-actions">
+              <button
+                class="x-icon-button"
+                type="button"
+                data-share
+                th:aria-label="#{action.share}"
+                th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+              >
+                <iconify-icon icon="ri:share-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 封面当头图 */-->
+        <div class="x-media" data-count="1" th:if="${not #strings.isEmpty(post.spec.cover)}" style="margin: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--border)">
+          <img th:src="${post.spec.cover}" th:alt="${post.spec.title}" data-lightbox data-alt-skip />
+        </div>
+
+        <article class="x-tweet x-tweet--detail" th:attr="data-post-name=${post.metadata.name}">
+          <h2 class="x-detail-title" style="font-size: 1.866rem" th:text="${post.spec.title}"></h2>
+
+          <div class="x-tweet-head" style="margin-bottom: 0">
+            <a th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true">
+              <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" />
+            </a>
+            <span class="x-detail-identity">
+              <a class="x-tweet-name" th:href="@{${owner?.permalink ?: ('/about')}}">
+                <span th:text="${xname}"></span>
+                <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+              </a>
+              <span class="x-tweet-handle">
+                <span th:text="'@' + ${xhandle}"></span>
+                <span>·</span>
+                <time
+                  th:datetime="${post.spec.publishTime}"
+                  th:text="${#temporals.format(post.spec.publishTime, #messages.msg('format.date'))}"
+                ></time>
+              </span>
+            </span>
+          </div>
+
+          <div class="x-detail-stats" style="border-top: 1px solid var(--border); margin-top: 16px">
+            <span th:with="cnt=${post.stats.visit ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}]]</span>
+            <span th:with="cnt=${post.stats.upvote ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'unit.like' : 'unit.likes')}]]</span>
+            <span th:with="cnt=${post.stats.comment ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'unit.reply' : 'unit.replies')}]]</span>
+          </div>
+        </article>
+
+        <div style="padding: 0 16px">
+          <th:block th:replace="~{modules/series :: card(post=${post})}"></th:block>
+        </div>
+
+        <!--/* 目录由 JS 从正文标题里抓 */-->
+        <div class="x-toc" data-toc hidden th:if="${theme.config.post?.toc != 'off'}">
+          <button class="x-toc-title" type="button" data-toc-toggle>
+            <iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>
+            <span th:text="#{post.toc}">目录</span>
+          </button>
+          <nav class="x-toc-list" data-toc-list th:aria-label="#{post.toc}"></nav>
+        </div>
+
+        <div style="padding: 16px">
+          <div class="x-prose" data-prose th:utext="${post.content.content}"></div>
+
+          <div class="x-tweet-tags" style="margin-top: 24px" th:if="${not #lists.isEmpty(post.tags) or not #lists.isEmpty(post.categories)}">
+            <a th:each="cat : ${post.categories}" th:href="@{${cat.status.permalink}}" th:text="${cat.spec.displayName}"></a>
+            <a th:each="tag : ${post.tags}" th:href="@{${tag.status.permalink}}" th:text="'#' + ${tag.spec.displayName}"></a>
+          </div>
+
+          <div class="x-copyright" th:if="${theme.config.post?.copyright != 'off'}">
+            <span th:text="${theme.config.post?.copyright_text ?: (#messages.msg('default.copyrightText'))}"></span>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border)">
+          <div style="padding: 0 16px">
+            <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+          </div>
+        </div>
+
+        <th:block th:replace="~{modules/tip :: tipButton(place='post')}"></th:block>
+
+        <nav
+          class="x-post-nav"
+          th:if="${theme.config.post?.post_nav != 'off'}"
+          th:with="cursor=${postFinder.cursor(post.metadata.name)}"
+        >
+          <a th:if="${cursor.hasPrevious()}" th:href="@{${cursor.previous.status.permalink}}">
+            <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            <span>
+              <span class="x-post-nav-label" th:text="#{action.prevPost}">上一篇</span>
+              <span class="x-post-nav-title" th:text="${cursor.previous.spec.title}"></span>
+            </span>
+          </a>
+          <a th:if="${cursor.hasNext()}" th:href="@{${cursor.next.status.permalink}}">
+            <iconify-icon icon="ri:arrow-right-line" aria-hidden="true"></iconify-icon>
+            <span>
+              <span class="x-post-nav-label" th:text="#{action.nextPost}">下一篇</span>
+              <span class="x-post-nav-title" th:text="${cursor.next.spec.title}"></span>
+            </span>
+          </a>
+        </nav>
+
+        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">
+          <th:block th:replace="~{modules/tweet :: commentsHead(count=${post.stats.comment})}"></th:block>
+          <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="Post" th:attr="name=${post.metadata.name}" /></div>
+        </section>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='home')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='home', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

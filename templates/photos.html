@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.photos} + ${site.title}, desc=#{desc.photos}, image=null, canonical=null, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='photos')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="#{common.media}">媒体</h1>
+              <div class="x-header-sub" th:if="${photos.total > 0}" th:with="cnt=${photos.total ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.photo' : 'unit.photos')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 相册：像 X 个人主页的媒体标签页，四宫格缩略图 */-->
+        <!--/* 当前在看哪个相册：插件（2.1.2）不往模型里放，只能读 ?group= 查询参数 */-->
+        <th:block th:if="${#strings.isEmpty(param.group) and groups != null and not #lists.isEmpty(groups)}">
+          <h2 class="x-section-head" th:text="#{common.albums}">相册</h2>
+          <a
+            class="x-explore-row"
+            th:each="g : ${groups}"
+            th:href="${photoUrl.list(g.metadata.name)}"
+          >
+            <span class="x-explore-cover" style="overflow: hidden; padding: 0">
+              <span style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; height: 100%">
+                <th:block th:each="p, st : ${g.photos}">
+                  <img
+                    th:if="${st.index &lt; 4}"
+                    th:src="${#strings.isEmpty(p.spec.cover) ? p.spec.url : p.spec.cover}"
+                    alt=""
+                    loading="lazy"
+                    style="width: 100%; height: 100%; object-fit: cover"
+                  />
+                </th:block>
+              </span>
+            </span>
+            <div class="x-explore-row-main">
+              <div class="x-explore-row-title" th:text="${g.spec.displayName}"></div>
+              <div class="x-explore-row-sub" th:with="cnt=${#lists.size(g.photos) ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.photo' : 'unit.photos')}"></div>
+            </div>
+            <iconify-icon icon="ri:arrow-right-s-line" style="color: var(--text-secondary); font-size: 20px"></iconify-icon>
+          </a>
+        </th:block>
+
+        <div style="padding: 8px 16px" th:if="${not #strings.isEmpty(param.group)}">
+          <a class="x-btn x-btn--outline" th:href="${photoUrl.list()}">
+            <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            [[#{common.allAlbums}]]
+          </a>
+        </div>
+
+        <div
+          class="x-photo-grid"
+          th:if="${not #lists.isEmpty(photos.items)}"
+          th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
+        >
+          <img
+            th:each="photo : ${photos.items}"
+            th:with="raw=${#strings.isEmpty(photo.spec.cover) ? photo.spec.url : photo.spec.cover}"
+            th:src="${thumbs} ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${raw},size='m')} : ${raw}"
+            th:attr="data-full=${photo.spec.url}, data-fallback=${thumbs} ? ${raw} : null"
+            th:alt="${photo.spec.displayName}"
+            th:title="${photo.spec.displayName}"
+            loading="lazy"
+            decoding="async"
+            data-lightbox
+          />
+        </div>
+
+        <th:block th:if="${#lists.isEmpty(photos.items)}">
+          <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noPhotos.title}, text=#{empty.noPhotos.text})}"></th:block>
+        </th:block>
+
+        <th:block th:replace="~{modules/pagination :: pagination(list=${photos})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='photos')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='photos', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

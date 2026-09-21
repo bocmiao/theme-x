@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block th:replace="~{modules/head :: head(title=#{title.error} + ${site.title}, desc=null, image=null, canonical=null, type='website')}"></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <h1 class="x-header-title" th:text="#{error.general.heading}">出了点问题</h1>
+          </div>
+        </header>
+
+        <div class="x-empty" style="text-align: center; margin-top: 48px">
+          <h2 style="margin-bottom: 16px" th:text="#{error.general.title}">重新加载试试</h2>
+          <p th:text="#{error.general.text}">服务端刚才没能把这页拼出来。刷新一下通常就好了，要是一直这样就得看看后台日志。</p>
+          <!--/* 只给状态码。${error} 是个 ProblemDetail 对象，直接打出来是一串 Java toString，
+               还带着 requestId；去读它的属性又怕不同版本字段不一样——错误页自己不能再出错。 */-->
+          <p th:if="${status != null}" style="font-family: var(--font-mono); font-size: 0.866rem">
+            <span th:text="${status}"></span>
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center">
+            <button class="x-btn x-btn--accent" type="button" onclick="location.reload()" th:text="#{common.reload}">重新加载</button>
+            <a class="x-btn x-btn--outline" th:href="@{/}" th:text="#{common.backHome}">回到首页</a>
+          </div>
+        </div>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

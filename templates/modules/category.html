@@ -1,0 +1,39 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/* 分类是一棵树（categories 变量来自 listAsTree），子分类缩进着接在父分类下面 */-->
+  <th:block th:fragment="rows(list, depth)">
+    <th:block th:each="c : ${list}">
+      <a class="x-explore-row" th:href="@{${c.status.permalink}}" th:style="${depth &gt; 0} ? 'padding-left: ' + ${16 + depth * 28} + 'px' : null">
+        <img
+          class="x-explore-thumb"
+          th:if="${not #strings.isEmpty(c.spec.cover)}"
+          th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
+          th:src="${thumbs} ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${c.spec.cover},size='s')} : ${c.spec.cover}"
+          th:attr="data-fallback=${thumbs} ? ${c.spec.cover} : null"
+          th:alt="${c.spec.displayName}"
+          loading="lazy"
+        />
+        <!--/* 没封面就摆一个首字方块，别留白 */-->
+        <span class="x-explore-cover" th:unless="${not #strings.isEmpty(c.spec.cover)}">
+          <span
+            th:text="${c.spec.displayName.substring(0, c.spec.displayName.offsetByCodePoints(0, 1))}"
+            style="font-size: 24px; font-weight: 800; color: var(--text)"
+          ></span>
+        </span>
+
+        <div class="x-explore-row-main">
+          <div class="x-explore-row-title" th:text="${c.spec.displayName}"></div>
+          <div
+            class="x-explore-row-sub"
+            th:if="${not #strings.isEmpty(c.spec.description)}"
+            th:text="${c.spec.description}"
+          ></div>
+          <div class="x-explore-row-sub" th:with="cnt=${c.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+        </div>
+        <iconify-icon icon="ri:arrow-right-s-line" style="color: var(--text-secondary); font-size: 20px"></iconify-icon>
+      </a>
+      <th:block th:if="${not #lists.isEmpty(c.children)}">
+        <th:block th:replace="~{modules/category :: rows(list=${c.children}, depth=${depth + 1})}"></th:block>
+      </th:block>
+    </th:block>
+  </th:block>
+</th:block>

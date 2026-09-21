@@ -1,0 +1,146 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/*
+    打赏 / 赞赏。X 上叫 Tips，按钮就挂在个人资料那排操作里；
+    国内博客更常见的是文章末尾放一个收款码，所以两处都能放，站长自己勾。
+    「有没有配过收款方式」这件事要判两次（按钮一次、弹窗一次），
+    两边的条件必须写成一样的，否则会出现按钮点不开或者空弹窗。
+  */-->
+
+  <!--/* ============================================== 按钮 ================ */-->
+  <!--/* place 取 post（文章末尾，整条横幅按钮）或 profile（资料页，图标按钮） */-->
+  <th:block th:fragment="tipButton(place)">
+    <th:block
+      th:with="tp=${theme.config.tip},
+               tipPlaces=${tp?.position ?: ({'post','profile'})},
+               tipOn=${tp?.enabled == 'on'
+                 and (not #strings.isEmpty(tp?.wechat)
+                   or not #strings.isEmpty(tp?.alipay)
+                   or not #strings.isEmpty(tp?.custom_qr)
+                   or not #strings.isEmpty(tp?.link_url))},
+               tipText=${#strings.isEmpty(tp?.button_text) ? #messages.msg('tip.button') : tp.button_text}"
+    >
+      <th:block th:if="${tipOn and #lists.contains(tipPlaces, place)}">
+        <!--/* 文章末尾 */-->
+        <div class="x-tip-bar" th:if="${place == 'post'}">
+          <button class="x-btn x-tip-btn" type="button" data-open-tip>
+            <iconify-icon icon="ri:cup-line" aria-hidden="true"></iconify-icon>
+            <span th:text="${tipText}">赞赏</span>
+          </button>
+        </div>
+
+        <!--/* 个人资料那排操作，跟 X 的 Tips 一个位置 */-->
+        <button
+          th:if="${place == 'profile'}"
+          class="x-icon-button"
+          type="button"
+          data-open-tip
+          th:aria-label="${tipText}"
+          th:title="${tipText}"
+          style="border: 1px solid var(--border-strong); width: 36px; height: 36px"
+        >
+          <iconify-icon icon="ri:cup-line" aria-hidden="true"></iconify-icon>
+        </button>
+      </th:block>
+    </th:block>
+  </th:block>
+
+  <!--/* ============================================== 弹窗 ================ */-->
+  <th:block th:fragment="tipDialog">
+    <th:block
+      th:with="tp=${theme.config.tip},
+               tipOn=${tp?.enabled == 'on'
+                 and (not #strings.isEmpty(tp?.wechat)
+                   or not #strings.isEmpty(tp?.alipay)
+                   or not #strings.isEmpty(tp?.custom_qr)
+                   or not #strings.isEmpty(tp?.link_url))},
+               tipTitle=${#strings.isEmpty(tp?.title) ? #messages.msg('tip.title') : tp.title},
+               customLabel=${#strings.isEmpty(tp?.custom_label) ? #messages.msg('tip.other') : tp.custom_label},
+               qrCount=${(#strings.isEmpty(tp?.wechat) ? 0 : 1)
+                 + (#strings.isEmpty(tp?.alipay) ? 0 : 1)
+                 + (#strings.isEmpty(tp?.custom_qr) ? 0 : 1)},
+               linkUrlRaw=${#strings.trim(tp?.link_url ?: '')},
+               linkUrl=${#strings.isEmpty(linkUrlRaw) ? '#' : (#strings.startsWith(linkUrlRaw, '/') or #strings.startsWith(linkUrlRaw, '#') or #strings.startsWith(#strings.toLowerCase(linkUrlRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(linkUrlRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(linkUrlRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(linkUrlRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(linkUrlRaw), 'sms:') ? linkUrlRaw : 'https://' + linkUrlRaw)}"
+    >
+      <div
+        th:if="${tipOn}"
+        class="x-overlay"
+        data-overlay="tip"
+        role="dialog"
+        aria-modal="true"
+        th:aria-label="${tipTitle}"
+      >
+        <div class="x-modal x-modal--sm">
+          <div class="x-modal-head">
+            <button class="x-header-back" type="button" data-close-overlay th:aria-label="#{common.close}">
+              <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <h2 class="x-modal-title" th:text="${tipTitle}">赞赏</h2>
+          </div>
+
+          <div class="x-modal-body">
+            <div class="x-modal-lead" th:if="${not #strings.isEmpty(tp?.desc)}">
+              <p th:text="${tp.desc}"></p>
+            </div>
+
+            <!--/* 只配了一种收款码就不用切换了 */-->
+            <div class="x-tip-tabs" role="tablist" th:if="${qrCount > 1}" th:aria-label="${tipTitle}">
+              <button
+                th:if="${not #strings.isEmpty(tp?.wechat)}"
+                class="x-tip-tab"
+                type="button"
+                role="tab"
+                data-tip-tab="wechat"
+                th:text="#{tip.wechat}"
+              >微信</button>
+              <button
+                th:if="${not #strings.isEmpty(tp?.alipay)}"
+                class="x-tip-tab"
+                type="button"
+                role="tab"
+                data-tip-tab="alipay"
+                th:text="#{tip.alipay}"
+              >支付宝</button>
+              <button
+                th:if="${not #strings.isEmpty(tp?.custom_qr)}"
+                class="x-tip-tab"
+                type="button"
+                role="tab"
+                data-tip-tab="custom"
+                th:text="${customLabel}"
+              >其他</button>
+            </div>
+
+            <div class="x-tip-panes" th:if="${qrCount > 0}">
+              <div class="x-tip-pane" role="tabpanel" data-tip-pane="wechat" th:if="${not #strings.isEmpty(tp?.wechat)}">
+                <img th:src="${tp.wechat}" th:alt="${#messages.msg('tip.wechat') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <span th:text="#{tip.wechat}">微信</span>
+              </div>
+              <div class="x-tip-pane" role="tabpanel" data-tip-pane="alipay" th:if="${not #strings.isEmpty(tp?.alipay)}">
+                <img th:src="${tp.alipay}" th:alt="${#messages.msg('tip.alipay') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <span th:text="#{tip.alipay}">支付宝</span>
+              </div>
+              <div class="x-tip-pane" role="tabpanel" data-tip-pane="custom" th:if="${not #strings.isEmpty(tp?.custom_qr)}">
+                <img th:src="${tp.custom_qr}" th:alt="${customLabel + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <span th:text="${customLabel}">其他</span>
+              </div>
+            </div>
+
+            <!--/* 爱发电 / Ko-fi / PayPal 这类站外收款页 */-->
+            <a
+              th:if="${not #strings.isEmpty(tp?.link_url)}"
+              class="x-btn x-tip-link"
+              th:href="${linkUrl}"
+              target="_blank"
+              rel="noopener"
+            >
+              <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
+              <span th:text="${#strings.isEmpty(tp?.link_text) ? #messages.msg('tip.linkDefault') : tp.link_text}">在线支持</span>
+            </a>
+
+            <p class="x-tip-foot" th:text="#{tip.thanks}">感谢你的支持</p>
+          </div>
+        </div>
+      </div>
+    </th:block>
+  </th:block>
+</th:block>

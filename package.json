@@ -1,0 +1,13 @@
+{
+  "name": "theme-x",
+  "version": "1.13.2",
+  "private": true,
+  "description": "X (Twitter) 风格的 Halo 主题",
+  "scripts": {
+    "build": "theme-package",
+    "package": "theme-package"
+  },
+  "devDependencies": {
+    "@halo-dev/theme-package-cli": "^1.0.0"
+  }
+}

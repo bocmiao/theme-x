@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.links} + ${site.title}, desc=#{desc.links}, image=null, canonical=null, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='links')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="#{action.worthFollowing}">值得关注</h1>
+              <div class="x-header-sub" th:if="${not #lists.isEmpty(links)}" th:with="cnt=${#lists.size(links) ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.site' : 'unit.sites')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 友链插件给了分组就按组分段，没给就平铺 */-->
+        <!--/* 分组里一条友链都没有的时候，上面那圈 th:each 一个 section 都渲染不出来，
+             所以这里的条件要看「到底有没有友链」，不是「有没有分组」 */-->
+        <th:block th:if="${groups != null and not #lists.isEmpty(groups) and not #lists.isEmpty(links)}">
+          <section th:each="g : ${groups}" th:if="${not #lists.isEmpty(g.links)}">
+            <h2 class="x-section-head">
+              <span th:text="${g.spec.displayName ?: (#messages.msg('links.ungrouped'))}"></span>
+              <span style="color: var(--text-secondary); font-size: 0.866rem" th:with="cnt=${#lists.size(g.links) ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.site' : 'unit.sites')}"></span>
+            </h2>
+            <th:block th:each="link : ${g.links}">
+              <th:block th:replace="~{modules/link :: linkRow(link=${link})}"></th:block>
+            </th:block>
+          </section>
+        </th:block>
+
+        <th:block th:if="${(groups == null or #lists.isEmpty(groups)) and not #lists.isEmpty(links)}">
+          <th:block th:each="link : ${links}">
+            <th:block th:replace="~{modules/link :: linkRow(link=${link})}"></th:block>
+          </th:block>
+        </th:block>
+
+        <th:block th:if="${#lists.isEmpty(links) and (groups == null or #lists.isEmpty(groups))}">
+          <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noLinks.title}, text=#{empty.noLinks.text})}"></th:block>
+        </th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='links')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='links', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+
+</html>

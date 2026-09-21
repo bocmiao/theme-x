@@ -1,0 +1,44 @@
+apiVersion: theme.halo.run/v1alpha1
+kind: Theme
+metadata:
+  name: theme-x
+spec:
+  displayName: X
+  author:
+    name: "Miao"
+  description: 把博客变成 X（原 Twitter）。左栏导航、中间 600px 时间线、右栏搜索与趋势，三套背景配六种强调色，无限滚动、键盘快捷键、图片灯箱一并还原。
+  logo: /themes/theme-x/assets/images/logo.svg
+  version: 1.13.2
+  requires: ">=2.20.0"
+  settingName: "theme-x-setting"
+  configMapName: "theme-x-configmap"
+  license:
+    - name: "MIT"
+  customTemplates:
+    post:
+      - name: 长文
+        description: 正文按文章排版，附目录与阅读进度，适合长篇
+        file: post_longform.html
+    page:
+      - name: 关于
+        description: X 个人主页样式，含横幅、头像与资料行
+        file: page_about.html
+      - name: 书签
+        description: 展示本机收藏的文章
+        file: page_bookmarks.html
+      - name: 留言板
+        description: 只有一句话头部 + 评论区
+        file: page_message.html
+      - name: 媒体
+        description: 所有带封面的文章排成方格网格，X 个人主页的「媒体」标签
+        file: page_media.html
+      - name: Epic 限免
+        description: 把 Epic 本周限免和即将限免的游戏排成时间线
+        file: page_epic.html
+    category:
+      - name: 系列
+        description: 分类下的文章按发布顺序排成一个系列，文章页会显示「第几篇」
+        file: category_series.html
+      - name: 列表
+        description: 分类页按 X 的 Lists 样式展示
+        file: category_list.html

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=${category.spec.displayName + (posts.page > 1 ? ' - ' + #messages.msg('title.pageN', posts.page) : '') + ' - ' + site.title}, desc=${category.spec.description}, image=${category.spec.cover}, canonical=${posts.page > 1 ? category.status.permalink + '/page/' + posts.page : category.status.permalink}, type='website')}"
+    ></th:block>
+    <!--/* 超出总页数的地址 Halo 照样渲染，是一串空页面，别让爬虫收进去 */-->
+    <meta name="robots" content="noindex,follow" th:if="${posts.page > posts.totalPages}" />
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='categories')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${category.spec.displayName}"></h1>
+              <div class="x-header-sub" th:with="cnt=${category.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+            <div class="x-header-actions">
+              <button
+                class="x-icon-button"
+                type="button"
+                data-share
+                th:aria-label="#{action.share}"
+                th:attr="data-permalink=${category.status.permalink}, data-title=${category.spec.displayName}"
+              >
+                <iconify-icon icon="ri:share-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div
+          style="padding: 12px 16px; border-bottom: 1px solid var(--border)"
+          th:if="${not #strings.isEmpty(category.spec.description)}"
+        >
+          <p style="color: var(--text-secondary); line-height: 1.4" th:text="${category.spec.description}"></p>
+        </div>
+
+        <div class="x-timeline" data-timeline>
+          <th:block th:each="post : ${posts.items}">
+            <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+          </th:block>
+
+          <th:block th:if="${#lists.isEmpty(posts.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.emptyCategory.title}, text=#{empty.emptyCategory.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${posts})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='categories')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='categories', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

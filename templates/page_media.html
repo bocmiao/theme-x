@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=#{desc.media}, image=null, canonical=${singlePage.status.permalink}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <!--/*
+      postFinder 没有「只要有封面的」这种查询，只能全量取回来自己筛。
+      500 是保险丝：size 给 0 才是真正的「全部」，但一次把上千篇文章拉进内存不划算。
+      筛完之后 ListResult 的 total / totalPages 就对不上了，别拿去喂分页片段——
+      那会因为取不存在的属性让整页以「200 + 内容截断」的形式坏掉，很难查。
+      排序显式写死时间倒序：默认排序会把置顶的插到最前面，媒体墙按时间铺更自然。
+    */-->
+    <div
+      class="x-shell"
+      th:with="capRaw=${#conversions.convert(theme.config.post?.media_count ?: (60), 'java.lang.Integer')},
+               cap=${capRaw &lt; 1 ? 1 : (capRaw > 300 ? 300 : capRaw)},
+               media=${postFinder.list({page: 1, size: 500, sort: {'spec.publishTime,desc'}}).items.?[spec.cover != null and spec.cover != '']},
+               found=${#lists.size(media)},
+               shown=${found > cap ? cap : found}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='profile')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${singlePage.spec.title}"></h1>
+              <div
+                class="x-header-sub"
+                th:text="${shown + #messages.msg(shown == 1 ? 'unit.photo' : 'unit.photos')}"
+              ></div>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 标签栏紧贴标题栏：它在五个落点上的位置必须一样，否则来回点的时候整排会上下跳 */-->
+        <th:block th:replace="~{modules/profile :: tabs(current='media')}"></th:block>
+
+        <!--/* 页面本身的正文当说明文字用，和书签页一个路子 */-->
+        <div
+          style="padding: 12px 16px; border-bottom: 1px solid var(--border)"
+          th:if="${not #strings.isEmpty(singlePage.status.excerpt)}"
+        >
+          <div class="x-prose" style="font-size: 1rem" th:utext="${singlePage.content.content}"></div>
+        </div>
+
+        <!--/*
+          一格一篇，取封面。X 的媒体页点进去是灯箱，但那对博客来说是死路——
+          看完一张图就没下文了，所以这里点开的是文章本身。
+        */-->
+        <div
+          class="x-media-grid"
+          th:if="${shown > 0}"
+          th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
+        >
+          <!--/* 只画前 shown 张。不用 subList：越界会抛异常，页面就成了截断的半张 */-->
+          <a
+            th:each="mp, st : ${media}"
+            th:if="${st.index &lt; cap}"
+            th:href="@{${mp.status.permalink}}"
+            th:title="${mp.spec.title}"
+          >
+            <img
+              th:src="${thumbs}
+                ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${mp.spec.cover},size='m')}
+                : ${mp.spec.cover}"
+              th:attr="data-fallback=${thumbs} ? ${mp.spec.cover} : null"
+              th:alt="${mp.spec.title}"
+              loading="lazy"
+              decoding="async"
+              data-alt-skip
+            />
+            <span class="x-media-grid-cap" th:text="${mp.spec.title}"></span>
+          </a>
+        </div>
+
+        <!--/* 封面比上限还多，剩下的引到归档去 */-->
+        <a
+          class="x-card-more"
+          th:if="${found > cap}"
+          th:href="@{${site.routes.archivesUri}}"
+          th:text="#{common.showMore}"
+        >显示更多</a>
+
+        <th:block th:if="${shown == 0}">
+          <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noMedia.title}, text=#{empty.noMedia.text})}"></th:block>
+        </th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='profile')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='profile', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

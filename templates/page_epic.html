@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=#{desc.epic}, image=null, canonical=${singlePage.status.permalink}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${singlePage.spec.title}"></h1>
+              <div class="x-header-sub">Epic Games Store</div>
+            </div>
+            <div class="x-header-actions">
+              <a
+                class="x-icon-button"
+                href="https://store.epicgames.com/free-games"
+                target="_blank"
+                rel="noopener noreferrer"
+                th:aria-label="#{epic.openStore}"
+                th:title="#{epic.openStore}"
+              >
+                <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 页面本身的正文当说明文字用 */-->
+        <div
+          style="padding: 12px 16px; border-bottom: 1px solid var(--border)"
+          th:if="${not #strings.isEmpty(singlePage.content.content)}"
+        >
+          <div class="x-prose" style="font-size: 1rem" th:utext="${singlePage.content.content}"></div>
+        </div>
+
+        <!--/* 限免数据在访客浏览器里拿（theme.js 的 initEpic），data-state 决定下面哪一块露出来 */-->
+        <div class="x-epic-page" data-epic="page" data-state="loading">
+          <div data-epic-feed></div>
+
+          <div class="x-epic-state x-epic-state--loading" role="status">
+            <span class="x-epic-spinner" aria-hidden="true"></span>
+            <p th:text="#{epic.loading}">正在看看这周送什么…</p>
+          </div>
+
+          <div class="x-epic-state x-epic-state--empty">
+            <div class="x-empty">
+              <h2 th:text="#{epic.empty.title}">这周没有限免游戏</h2>
+              <p th:text="#{epic.empty.text}">Epic 通常在每周四晚上换一批，过几天再来看看。</p>
+            </div>
+          </div>
+
+          <div class="x-epic-state x-epic-state--error">
+            <div class="x-empty">
+              <h2 th:text="#{epic.error.title}">限免数据暂时拿不到</h2>
+              <p th:text="#{epic.error.text}">接口没有响应，可以直接去 Epic 商店的免费游戏页看。</p>
+              <a
+                class="x-btn x-btn--accent"
+                href="https://store.epicgames.com/free-games"
+                target="_blank"
+                rel="noopener noreferrer"
+                th:text="#{epic.openStore}"
+              >去 Epic 商店</a>
+            </div>
+          </div>
+        </div>
+
+        <noscript><p class="x-epic-source" th:text="#{epic.noscript}">这个页面需要 JavaScript 才能加载限免数据。</p></noscript>
+        <p class="x-epic-source" th:text="#{epic.source}">数据来自 Epic Games Store 的公开促销信息，领取以商店页面为准。</p>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

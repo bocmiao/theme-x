@@ -1,0 +1,263 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+  <!--/* ================================================== 认证标记 ======= */-->
+  <th:block th:fragment="verified">
+    <th:block th:with="kind=${theme.config.profile?.verified ?: ('blue')}">
+      <iconify-icon
+        th:if="${kind != 'off'}"
+        class="x-verified"
+        icon="ri:verified-badge-fill"
+        th:attr="data-kind=${kind}"
+        th:title="#{common.verified}"
+      ></iconify-icon>
+    </th:block>
+  </th:block>
+
+  <!--/* ================================================== 互动栏 ========= */-->
+  <th:block th:fragment="actions(post, canComment)">
+    <div class="x-actions" th:if="${theme.config.post?.actions != 'off'}">
+      <!--/* 评论关掉时页面上没有 #comments，锚点跳过去什么也不会发生，退化成「打开这篇」 */-->
+      <a
+        class="x-action"
+        data-kind="reply"
+        th:href="${canComment == false} ? @{${post.status.permalink}} : @{${post.status.permalink}} + '#comments'"
+        th:title="#{action.reply}"
+        th:aria-label="#{action.reply}"
+      >
+        <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line" aria-hidden="true"></iconify-icon></span>
+        <span class="x-action-count" data-format-count th:text="${post.stats.comment}"></span>
+      </a>
+
+      <button
+        class="x-action"
+        type="button"
+        data-kind="repost"
+        data-repost
+        th:title="#{action.repost}"
+        th:aria-label="#{action.repost}"
+        th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+      >
+        <span class="x-action-icon"><iconify-icon icon="ri:repeat-line" aria-hidden="true"></iconify-icon></span>
+        <span class="x-action-count"></span>
+      </button>
+
+      <button
+        class="x-action"
+        type="button"
+        data-kind="like"
+        data-like
+        th:title="#{action.like}"
+        th:aria-label="#{action.like}"
+        th:attr="data-post-name=${post.metadata.name}"
+      >
+        <span class="x-action-icon"><iconify-icon icon="ri:heart-3-line" aria-hidden="true"></iconify-icon></span>
+        <span class="x-action-count" data-format-count data-like-count th:text="${post.stats.upvote}"></span>
+      </button>
+
+      <a
+        class="x-action"
+        data-kind="view"
+        th:href="@{${post.status.permalink}}"
+        th:title="#{action.views}"
+        th:aria-label="#{action.views}"
+      >
+        <span class="x-action-icon"><iconify-icon icon="ri:bar-chart-2-line" aria-hidden="true"></iconify-icon></span>
+        <span class="x-action-count" data-format-count th:text="${post.stats.visit}"></span>
+      </a>
+
+      <span class="x-action-group" style="display: flex">
+        <button
+          th:if="${theme.config.features?.bookmarks != 'off'}"
+          class="x-action"
+          type="button"
+          data-kind="bookmark"
+          data-bookmark
+          th:title="#{action.bookmark}"
+          th:aria-label="#{action.bookmark}"
+          th:attr="data-permalink=${post.status.permalink},
+                   data-title=${post.spec.title},
+                   data-excerpt=${post.status.excerpt},
+                   data-time=${post.spec.publishTime},
+                   data-cover=${post.spec.cover}"
+        >
+          <span class="x-action-icon"><iconify-icon icon="ri:bookmark-line" aria-hidden="true"></iconify-icon></span>
+        </button>
+
+        <button
+          class="x-action"
+          type="button"
+          data-kind="share"
+          data-share
+          th:title="#{action.share}"
+          th:aria-label="#{action.share}"
+          th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+        >
+          <span class="x-action-icon"><iconify-icon icon="ri:share-line" aria-hidden="true"></iconify-icon></span>
+        </button>
+      </span>
+    </div>
+  </th:block>
+
+  <!--/* ================================================== 媒体卡 ========= */-->
+  <!--/* 封面只有一张，按 X 的单图卡片铺开；正文里的多图由 JS 收成网格 */-->
+  <th:block th:fragment="media(post)">
+    <div
+      class="x-media"
+      data-count="1"
+      th:if="${theme.config.home?.media_grid != 'off' and not #strings.isEmpty(post.spec.cover)}"
+      th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
+    >
+      <!--/* 列表里加载的是缩略图，data-fallback 兜住接口取不到的情况；
+           点开灯箱时用 data-full 的原图 */-->
+      <img
+        th:src="${thumbs}
+          ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${post.spec.cover},size='l')}
+          : ${post.spec.cover}"
+        th:attr="data-fallback=${thumbs} ? ${post.spec.cover} : null,
+                 data-full=${post.spec.cover},
+                 loading=${eager == true} ? null : 'lazy',
+                 fetchpriority=${eager == true} ? 'high' : null"
+        th:alt="${post.spec.title}"
+        data-alt-skip
+        decoding="async"
+        data-lightbox
+      />
+    </div>
+  </th:block>
+
+  <!--/* ================================================== 时间线条目 ===== */-->
+  <!--/* context：置顶、转推之类的灰色小字，不需要就传 null */-->
+  <th:block th:fragment="tweet(post, context)">
+    <div
+      th:with="pf=${theme.config.profile},
+               po=${theme.config.post},
+               owner=${post.owner},
+               xname=${owner?.displayName ?: (pf?.name ?: (site.title))},
+               xhandle=${owner?.name ?: (pf?.handle ?: ('blog'))},
+               xavatar=${owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))},
+               showTitle=${po?.excerpt != 'excerpt'},
+               showExcerpt=${po?.excerpt != 'title'}"
+    >
+      <div class="x-tweet-context" th:if="${not #strings.isEmpty(context)}">
+        <iconify-icon icon="ri:pushpin-fill" aria-hidden="true"></iconify-icon>
+        <span th:text="${context}"></span>
+      </div>
+
+      <article
+        class="x-tweet"
+        data-tweet
+        th:attr="data-permalink=${post.status.permalink},
+                 data-post-name=${post.metadata.name},
+                 data-title=${post.spec.title},
+                 data-visit=${post.stats.visit},
+                 data-time=${post.spec.publishTime}"
+      >
+        <div class="x-tweet-side">
+          <a class="x-avatar-link" th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true">
+            <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" decoding="async" />
+          </a>
+        </div>
+
+        <div class="x-tweet-main">
+          <div class="x-tweet-head">
+            <a class="x-tweet-name" th:href="@{${owner?.permalink ?: ('/about')}}">
+              <span th:text="${xname}"></span>
+              <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+            </a>
+            <span class="x-tweet-handle" th:text="'@' + ${xhandle}"></span>
+            <span class="x-tweet-dot">·</span>
+            <a class="x-tweet-time" th:href="@{${post.status.permalink}}">
+              <time
+                th:datetime="${post.spec.publishTime}"
+                th:attr="data-relative-time=${post.spec.publishTime}"
+                th:text="${#temporals.format(post.spec.publishTime, #messages.msg('format.dateShort'))}"
+              ></time>
+            </a>
+            <button
+              class="x-tweet-more"
+              type="button"
+              data-share
+              th:aria-label="#{common.more}"
+              th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+            >
+              <iconify-icon icon="ri:more-fill" aria-hidden="true"></iconify-icon>
+            </button>
+          </div>
+
+          <h2 class="x-tweet-title" th:if="${showTitle}">
+            <a th:href="@{${post.status.permalink}}" th:text="${post.spec.title}"></a>
+          </h2>
+
+          <p class="x-tweet-text" th:if="${showExcerpt}" th:text="${post.status.excerpt}"></p>
+
+          <div class="x-tweet-tags" th:if="${not #lists.isEmpty(post.tags)}">
+            <a
+              th:each="tag : ${post.tags}"
+              th:href="@{${tag.status.permalink}}"
+              th:text="'#' + ${tag.spec.displayName}"
+            ></a>
+          </div>
+
+          <th:block th:replace="~{modules/tweet :: media(post=${post})}"></th:block>
+          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+        </div>
+      </article>
+    </div>
+  </th:block>
+
+  <!--/* ================================================== 回复区外壳 ===== */-->
+  <!--/*
+    Halo 的评论组件内部在 Shadow DOM 里，外面改不动，只能靠 CSS 变量换色。
+    所以这里在它外面套一层 X 的回复区：标题 + 那行「回复 @某人」，
+    让上下衔接不至于断得太明显。真正的输入框还是组件自己的。
+  */-->
+  <th:block th:fragment="commentsHead(count)">
+    <th:block
+      th:with="pf=${theme.config.profile},
+               xhandle=${pf?.handle ?: ('blog')},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <h2 class="x-comments-head">
+        <span th:text="#{action.reply}">回复</span>
+        <small th:if="${count != null and count > 0}" th:with="cnt=${count ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.reply' : 'unit.replies')}"></small>
+      </h2>
+      <div class="x-reply-prompt">
+        <img class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
+        <span class="x-reply-prompt-text">
+          [[#{action.reply}]] <b th:text="'@' + ${xhandle}"></b>
+        </span>
+      </div>
+    </th:block>
+  </th:block>
+
+  <!--/* ================================================== 空时间线 ======= */-->
+  <th:block th:fragment="empty(title, text)">
+    <div class="x-empty">
+      <h2 th:text="${title}"></h2>
+      <p th:text="${text}"></p>
+      <a class="x-btn x-btn--accent" th:href="@{/}" th:text="#{common.backHome}">回到首页</a>
+    </div>
+  </th:block>
+
+  <!--/* ================================================== 加载占位 ======= */-->
+  <th:block th:fragment="loader">
+    <div class="x-loader" data-loader>
+      <div class="x-skeleton" aria-hidden="true">
+        <div class="x-skeleton-avatar"></div>
+        <div class="x-skeleton-lines">
+          <div class="x-skeleton-line"></div>
+          <div class="x-skeleton-line"></div>
+          <div class="x-skeleton-line"></div>
+        </div>
+      </div>
+      <div class="x-skeleton" aria-hidden="true">
+        <div class="x-skeleton-avatar"></div>
+        <div class="x-skeleton-lines">
+          <div class="x-skeleton-line"></div>
+          <div class="x-skeleton-line"></div>
+          <div class="x-skeleton-line"></div>
+        </div>
+      </div>
+    </div>
+  </th:block>
+</th:block>

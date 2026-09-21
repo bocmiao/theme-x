@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html
+  th:lang="#{meta.lang}"
+  lang="zh-CN"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:halo="https://halo.run"
+>
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=|${post.spec.title} - ${site.title}|, desc=${post.status.excerpt}, image=${post.spec.cover}, canonical=${post.status.permalink}, type='article')}"
+    ></th:block>
+    <!--/* 结构化数据：给搜索引擎看的文章信息 */-->
+    <script
+      type="application/ld+json"
+      th:inline="javascript"
+      th:with="base=${#strings.endsWith(site.url, '/')
+                 ? #strings.substring(site.url, 0, #strings.length(site.url) - 1)
+                 : site.url},
+               cover=${#strings.isEmpty(post.spec.cover)
+                 ? null
+                 : (#strings.startsWith(post.spec.cover, 'http') ? post.spec.cover : base + post.spec.cover)},
+               ldTitle=${#strings.replace(post.spec.title ?: '', '&lt;', '')},
+               ldDesc=${#strings.replace(post.status.excerpt ?: '', '&lt;', '')},
+               ldAuthor=${#strings.replace(post.owner?.displayName ?: (site.title) ?: '', '&lt;', '')},
+               ldSite=${#strings.replace(site.title ?: '', '&lt;', '')}"
+    >
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": /*[[${ldTitle}]]*/ "",
+        "description": /*[[${ldDesc}]]*/ "",
+        "image": /*[[${cover}]]*/ null,
+        "datePublished": /*[[${post.spec.publishTime}]]*/ "",
+        "author": {
+          "@type": "Person",
+          "name": /*[[${ldAuthor}]]*/ ""
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": /*[[${ldSite}]]*/ ""
+        },
+        "mainEntityOfPage": /*[[${base + post.status.permalink}]]*/ ""
+      }
+    </script>
+
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="pf=${theme.config.profile},
+               po=${theme.config.post},
+               owner=${post.owner},
+               xname=${owner?.displayName ?: (pf?.name ?: (site.title))},
+               xhandle=${owner?.name ?: (pf?.handle ?: ('blog'))},
+               xavatar=${owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))},
+               relatedCount=${#conversions.convert(po?.related_count ?: (4), 'java.lang.Integer')}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div class="x-header-title" th:text="#{common.posts}">帖子</div>
+            <div class="x-header-actions">
+              <button
+                class="x-icon-button"
+                type="button"
+                data-share
+                th:aria-label="#{action.share}"
+                th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+              >
+                <iconify-icon icon="ri:share-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <article class="x-tweet x-tweet--detail" th:attr="data-post-name=${post.metadata.name}">
+          <!--/* 作者行 */-->
+          <div class="x-tweet-head">
+            <a th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true">
+              <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" />
+            </a>
+            <span class="x-detail-identity">
+              <a class="x-tweet-name" th:href="@{${owner?.permalink ?: ('/about')}}">
+                <span th:text="${xname}"></span>
+                <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+              </a>
+              <span class="x-tweet-handle" th:text="'@' + ${xhandle}"></span>
+            </span>
+            <button
+              class="x-tweet-more"
+              type="button"
+              data-share
+              th:aria-label="#{common.more}"
+              th:attr="data-permalink=${post.status.permalink}, data-title=${post.spec.title}"
+            >
+              <iconify-icon icon="ri:more-fill" aria-hidden="true"></iconify-icon>
+            </button>
+          </div>
+
+          <h1 class="x-detail-title" th:text="${post.spec.title}"></h1>
+
+          <th:block th:replace="~{modules/series :: card(post=${post})}"></th:block>
+
+          <!--/* 目录由 JS 从正文标题里抓；「所有文章都显示」时普通文章才有 */-->
+          <div class="x-toc x-toc--inline" data-toc hidden th:if="${po?.toc == 'all'}">
+            <button class="x-toc-title" type="button" data-toc-toggle>
+              <iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>
+              <span th:text="#{post.toc}">目录</span>
+            </button>
+            <nav class="x-toc-list" data-toc-list th:aria-label="#{post.toc}"></nav>
+          </div>
+
+          <div class="x-prose" data-prose th:utext="${post.content.content}"></div>
+
+          <!--/* 标签 / 分类 */-->
+          <div class="x-tweet-tags" style="margin-top: 16px" th:if="${not #lists.isEmpty(post.tags) or not #lists.isEmpty(post.categories)}">
+            <a
+              th:each="cat : ${post.categories}"
+              th:href="@{${cat.status.permalink}}"
+              th:text="${cat.spec.displayName}"
+            ></a>
+            <a
+              th:each="tag : ${post.tags}"
+              th:href="@{${tag.status.permalink}}"
+              th:text="'#' + ${tag.spec.displayName}"
+            ></a>
+          </div>
+
+          <div class="x-copyright" th:if="${po?.copyright != 'off'}">
+            <span th:text="${po?.copyright_text ?: (#messages.msg('default.copyrightText'))}"></span>
+          </div>
+
+          <!--/* 时间 + 浏览量，X 的那一行灰字 */-->
+          <div class="x-detail-meta">
+            <time
+              th:datetime="${post.spec.publishTime}"
+              th:text="${#temporals.format(post.spec.publishTime, #messages.msg('format.dateTime'))}"
+            ></time>
+            <span>·</span>
+            <strong data-format-count="keep" th:text="${post.stats.visit}"></strong>
+            <span th:text="${#messages.msg(post.stats.visit == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}">次查看</span>
+            <span class="x-meta-readtime" data-read-time th:if="${po?.read_time == 'all'}"></span>
+          </div>
+
+
+          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+        </article>
+
+        <th:block th:replace="~{modules/tip :: tipButton(place='post')}"></th:block>
+
+        <!--/* 上一篇 / 下一篇 */-->
+        <nav
+          class="x-post-nav"
+          th:if="${po?.post_nav != 'off'}"
+          th:with="cursor=${postFinder.cursor(post.metadata.name)}"
+        >
+          <a th:if="${cursor.hasPrevious()}" th:href="@{${cursor.previous.status.permalink}}">
+            <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            <span>
+              <span class="x-post-nav-label" th:text="#{action.prevPost}">上一篇</span>
+              <span class="x-post-nav-title" th:text="${cursor.previous.spec.title}"></span>
+            </span>
+          </a>
+          <a th:if="${cursor.hasNext()}" th:href="@{${cursor.next.status.permalink}}">
+            <iconify-icon icon="ri:arrow-right-line" aria-hidden="true"></iconify-icon>
+            <span>
+              <span class="x-post-nav-label" th:text="#{action.nextPost}">下一篇</span>
+              <span class="x-post-nav-title" th:text="${cursor.next.spec.title}"></span>
+            </span>
+          </a>
+        </nav>
+
+        <!--/* 相关文章：同分类优先，没有分类就退回最新 */-->
+        <th:block th:if="${relatedCount > 0}">
+          <th:block
+            th:with="cat=${#lists.isEmpty(post.categories) ? null : post.categories[0]},
+                     pool=${cat != null
+                       ? postFinder.listByCategory(1, relatedCount + 1, cat.metadata.name)
+                       : postFinder.list(1, relatedCount + 1)},
+                     related=${pool.items.?[metadata.name != '__${post.metadata.name}__']}"
+          >
+            <section th:if="${not #lists.isEmpty(related)}">
+              <h2 class="x-section-head" th:text="#{action.related}">更多相关内容</h2>
+              <th:block th:each="rp, st : ${related}">
+                <th:block th:if="${st.index &lt; relatedCount}">
+                  <a class="x-explore-row" th:href="@{${rp.status.permalink}}">
+                    <div class="x-explore-row-main">
+                      <div class="x-explore-row-sub" th:text="${#temporals.format(rp.spec.publishTime, #messages.msg('format.date'))}"></div>
+                      <div class="x-explore-row-title" th:text="${rp.spec.title}"></div>
+                      <div class="x-explore-row-sub" th:with="cnt=${rp.stats.visit ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></div>
+                    </div>
+                    <img
+                      class="x-explore-thumb"
+                      th:if="${not #strings.isEmpty(rp.spec.cover)}"
+                      th:src="${theme.config.features?.thumbnails != 'off'}
+                        ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${rp.spec.cover},size='s')}
+                        : ${rp.spec.cover}"
+                      th:attr="data-fallback=${theme.config.features?.thumbnails != 'off'} ? ${rp.spec.cover} : null"
+                      alt=""
+                      loading="lazy"
+                    />
+                  </a>
+                </th:block>
+              </th:block>
+            </section>
+          </th:block>
+        </th:block>
+
+        <!--/* 回复 */-->
+        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">
+          <th:block th:replace="~{modules/tweet :: commentsHead(count=${post.stats.comment})}"></th:block>
+          <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="Post" th:attr="name=${post.metadata.name}" /></div>
+        </section>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='home')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='home', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

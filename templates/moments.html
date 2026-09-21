@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.moments} + ${site.title}, desc=#{desc.moments}, image=null, canonical=null, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="pf=${theme.config.profile},
+               xname=${pf?.name ?: (site.title)},
+               xhandle=${pf?.handle ?: ('blog')},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='moments')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="#{common.moments}">瞬间</h1>
+              <div class="x-header-sub" th:if="${moments.total > 0}" th:with="cnt=${moments.total ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.moment' : 'unit.moments')}"></div>
+            </div>
+            <div class="x-header-actions">
+              <a class="x-icon-button" th:href="@{/console/moments}" th:aria-label="#{post.createMoment}" th:title="#{post.createMoment}">
+                <iconify-icon icon="ri:add-line" aria-hidden="true"></iconify-icon>
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 瞬间天生就是推文，一条一张卡 */-->
+        <div class="x-timeline" data-timeline>
+          <article
+            class="x-tweet"
+            data-tweet
+            th:each="moment : ${moments.items}"
+            th:with="content=${moment.spec.content},
+                     photos=${content.medium == null ? null : content.medium.?[type.name == 'PHOTO']},
+                     others=${content.medium == null ? null : content.medium.?[type.name != 'PHOTO']},
+                     url=@{/moments/{name}(name=${moment.metadata.name})},
+                     mname=${moment.owner?.displayName ?: (xname)},
+                     mavatar=${moment.owner?.avatar ?: (xavatar)}"
+            th:attr="data-permalink=${url}, data-title=${#strings.abbreviate(#strings.isEmpty(content.raw) ? #messages.msg('common.moments') : #strings.trim(content.raw.replaceAll('&lt;[^&gt;]*&gt;', ' ')), 40)}"
+          >
+            <div class="x-tweet-side">
+              <img class="x-avatar" th:src="${mavatar}" th:alt="${mname}" loading="lazy" />
+            </div>
+
+            <div class="x-tweet-main">
+              <div class="x-tweet-head">
+                <a class="x-tweet-name" th:href="${url}">
+                  <span th:text="${mname}"></span>
+                  <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+                </a>
+                <span class="x-tweet-handle" th:text="'@' + (${moment.owner?.name ?: (xhandle)})"></span>
+                <span class="x-tweet-dot">·</span>
+                <a class="x-tweet-time" th:href="${url}">
+                  <time
+                    th:if="${moment.spec.releaseTime != null}"
+                    th:datetime="${moment.spec.releaseTime}"
+                    th:attr="data-relative-time=${moment.spec.releaseTime}"
+                    th:text="${#temporals.format(moment.spec.releaseTime, #messages.msg('format.dateShort'))}"
+                  ></time>
+                </a>
+              </div>
+
+              <div class="x-tweet-text x-prose" style="font-size: 1rem" th:utext="${content.html}"></div>
+
+              <!--/* 图片按 X 的媒体网格铺开，最多四格 */-->
+              <div
+                class="x-media"
+                th:if="${photos != null and not #lists.isEmpty(photos)}"
+                th:attr="data-count=${#lists.size(photos) > 4 ? 4 : #lists.size(photos)}"
+              >
+                <th:block th:each="medium, st : ${photos}">
+                  <img
+                    th:if="${st.index &lt; 4}"
+                    th:src="${medium.url}"
+                    alt=""
+                    loading="lazy"
+                    data-lightbox
+                  />
+                </th:block>
+                <span
+                  class="x-media-badge"
+                  th:if="${#lists.size(photos) > 4}"
+                  th:text="'+' + (${#lists.size(photos)} - 4)"
+                ></span>
+              </div>
+
+              <!--/* 视频、音频这类非图片附件 */-->
+              <div th:if="${others != null and not #lists.isEmpty(others)}" style="margin-top: 12px">
+                <th:block th:each="medium : ${others}">
+                  <video
+                    th:if="${medium.type.name == 'VIDEO'}"
+                    th:src="${medium.url}"
+                    controls
+                    preload="metadata"
+                    style="width: 100%; border-radius: var(--radius); border: 1px solid var(--border)"
+                  ></video>
+                  <audio
+                    th:if="${medium.type.name == 'AUDIO'}"
+                    th:src="${medium.url}"
+                    controls
+                    preload="metadata"
+                    style="width: 100%; margin-top: 8px"
+                  ></audio>
+                </th:block>
+              </div>
+
+              <div class="x-tweet-tags" th:if="${not #lists.isEmpty(moment.spec.tags)}">
+                <a th:each="t : ${moment.spec.tags}" th:href="@{/moments(tag=${t})}" th:text="'#' + ${t}"></a>
+              </div>
+
+              <div class="x-actions">
+                <a class="x-action" data-kind="reply" th:href="${url} + '#comments'" th:title="#{action.reply}">
+                  <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
+                  <span class="x-action-count" data-format-count th:text="${moment.stats?.approvedComment ?: 0}"></span>
+                </a>
+                <button
+                  class="x-action"
+                  type="button"
+                  data-kind="repost"
+                  data-repost
+                  th:title="#{action.repost}"
+                  th:attr="data-permalink=${url}, data-title=${mname} + #{moment.suffix}"
+                >
+                  <span class="x-action-icon"><iconify-icon icon="ri:repeat-line"></iconify-icon></span>
+                </button>
+                <button
+                  class="x-action"
+                  type="button"
+                  data-kind="like"
+                  data-like
+                  data-like-kind="moment"
+                  th:title="#{action.like}"
+                  th:attr="data-post-name=${moment.metadata.name}"
+                >
+                  <span class="x-action-icon"><iconify-icon icon="ri:heart-3-line"></iconify-icon></span>
+                  <span class="x-action-count" data-format-count data-like-count th:text="${moment.stats?.upvote ?: 0}">0</span>
+                </button>
+                <button
+                  class="x-action"
+                  type="button"
+                  data-kind="share"
+                  data-share
+                  th:title="#{action.share}"
+                  th:attr="data-permalink=${url}, data-title=${mname} + #{moment.suffix}"
+                >
+                  <span class="x-action-icon"><iconify-icon icon="ri:share-line"></iconify-icon></span>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <th:block th:if="${#lists.isEmpty(moments.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noMoments.title}, text=#{empty.noMoments.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${moments})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='moments')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='moments', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.notFound} + ${site.title}, desc=null, image=null, canonical=null, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <h1 class="x-header-title" data-notfound-title th:text="#{error.notFound.heading}">页面不存在</h1>
+            <div class="x-header-actions" data-bookmarks-fallback-actions hidden>
+              <button class="x-icon-button" type="button" data-bookmarks-clear th:aria-label="#{a11y.clearBookmarks}" th:title="#{a11y.clearBookmarks}">
+                <iconify-icon icon="ri:delete-bin-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!--/*
+          书签页兜底。主题没法注册路由，/bookmarks 要站长手动建一个页面才存在；没建的话
+          导航里的「书签」、收藏后提示里的「查看」都会落到这张 404 上。书签本来就是纯前端的
+          （数据在访客的 localStorage 里），所以这里备一份容器：脚本发现路径是 /bookmarks
+          就把它亮出来、把 404 文案藏掉。站长建了真页面之后走的是 page_bookmarks.html，这段用不上。
+        */-->
+        <div
+          data-bookmarks-fallback
+          hidden
+          th:if="${theme.config.features?.bookmarks != 'off'}"
+          th:attr="data-title=#{common.bookmarks}"
+        >
+          <div data-bookmarks-list></div>
+          <div class="x-empty" data-bookmarks-empty hidden>
+            <h2 th:text="#{empty.bookmarks.title}">把帖子存起来以后再看</h2>
+            <p th:text="#{empty.bookmarks.text}">点任意一条帖子上的书签图标，它就会出现在这里。</p>
+            <a class="x-btn x-btn--accent" th:href="@{/}" th:text="#{common.browseHome}">去首页逛逛</a>
+          </div>
+        </div>
+
+        <div data-notfound>
+        <div class="x-empty" style="text-align: center; margin-top: 48px">
+          <h2 style="margin-bottom: 16px" th:text="#{error.notFound.title}">这页什么也没有</h2>
+          <p th:text="#{error.notFound.text}">你访问的链接可能已经被删掉、改过地址，或者从来就不存在。</p>
+          <div style="display: flex; gap: 12px; justify-content: center">
+            <a class="x-btn x-btn--accent" th:href="@{/}" th:text="#{common.backHome}">回到首页</a>
+            <a class="x-btn x-btn--outline" th:href="@{${site.routes.archivesUri}}" th:text="#{common.goExplore}">去探索</a>
+          </div>
+        </div>
+
+        <!--/* 顺手推几篇最新的，别让人空手走 */-->
+        <th:block th:with="recent=${postFinder.list(1, 5)}">
+          <section th:if="${not #lists.isEmpty(recent.items)}" style="margin-top: 32px">
+            <h2 class="x-section-head" th:text="#{action.suggested}">你可能想看</h2>
+            <a class="x-explore-row" th:each="post : ${recent.items}" th:href="@{${post.status.permalink}}">
+              <div class="x-explore-row-main">
+                <div class="x-explore-row-sub" th:text="${#temporals.format(post.spec.publishTime, #messages.msg('format.date'))}"></div>
+                <div class="x-explore-row-title" th:text="${post.spec.title}"></div>
+              </div>
+              <img
+                class="x-explore-thumb"
+                th:if="${not #strings.isEmpty(post.spec.cover)}"
+                th:src="${theme.config.features?.thumbnails != 'off'}
+                  ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${post.spec.cover},size='s')}
+                  : ${post.spec.cover}"
+                th:attr="data-fallback=${theme.config.features?.thumbnails != 'off'} ? ${post.spec.cover} : null"
+                alt=""
+                loading="lazy"
+              />
+            </a>
+          </section>
+        </th:block>
+        </div>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

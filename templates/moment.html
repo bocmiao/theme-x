@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html
+  th:lang="#{meta.lang}"
+  lang="zh-CN"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:halo="https://halo.run"
+>
+  <head>
+    <!--/* content.raw 是富文本 HTML，去掉标签再当摘要和标题用 */-->
+    <th:block th:with="mtext=${#strings.abbreviate(#strings.trim(moment.spec.content.raw?.replaceAll('&lt;[^&gt;]*&gt;', ' ')), 120)}">
+      <th:block
+        th:replace="~{modules/head :: head(title=${(#strings.isEmpty(mtext) ? '' : #strings.abbreviate(mtext, 30) + ' - ') + #messages.msg('title.moments') + site.title}, desc=${mtext}, image=null, canonical=@{/moments/{name}(name=${moment.metadata.name})}, type='article')}"
+      ></th:block>
+    </th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div
+      class="x-shell"
+      th:with="pf=${theme.config.profile},
+               content=${moment.spec.content},
+               photos=${content.medium == null ? null : content.medium.?[type.name == 'PHOTO']},
+               others=${content.medium == null ? null : content.medium.?[type.name != 'PHOTO']},
+               mname=${moment.owner?.displayName ?: (pf?.name ?: (site.title))},
+               mhandle=${moment.owner?.name ?: (pf?.handle ?: ('blog'))},
+               mavatar=${moment.owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='moments')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <h1 class="x-header-title" th:text="#{common.moments}">瞬间</h1>
+          </div>
+        </header>
+
+        <article class="x-tweet x-tweet--detail">
+          <div class="x-tweet-head">
+            <img class="x-avatar x-avatar--lg" th:src="${mavatar}" th:alt="${mname}" />
+            <span class="x-detail-identity">
+              <span class="x-tweet-name">
+                <span th:text="${mname}"></span>
+                <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+              </span>
+              <span class="x-tweet-handle" th:text="'@' + ${mhandle}"></span>
+            </span>
+          </div>
+
+          <div class="x-prose" data-prose style="font-size: 1.4rem; line-height: 1.4" th:utext="${content.html}"></div>
+
+          <div
+            class="x-media"
+            th:if="${photos != null and not #lists.isEmpty(photos)}"
+            th:attr="data-count=${#lists.size(photos) > 4 ? 4 : #lists.size(photos)}"
+          >
+            <!--/* 详情页全部铺出来：列表页只放前 4 张加「+N」角标，点进来要看得全 */-->
+            <img th:each="medium : ${photos}" th:src="${medium.url}" alt="" loading="lazy" data-lightbox />
+          </div>
+
+          <div th:if="${others != null and not #lists.isEmpty(others)}" style="margin-top: 12px">
+            <th:block th:each="medium : ${others}">
+              <video
+                th:if="${medium.type.name == 'VIDEO'}"
+                th:src="${medium.url}"
+                controls
+                preload="metadata"
+                style="width: 100%; border-radius: var(--radius); border: 1px solid var(--border)"
+              ></video>
+              <audio
+                th:if="${medium.type.name == 'AUDIO'}"
+                th:src="${medium.url}"
+                controls
+                preload="metadata"
+                style="width: 100%; margin-top: 8px"
+              ></audio>
+            </th:block>
+          </div>
+
+          <div class="x-tweet-tags" style="margin-top: 12px" th:if="${not #lists.isEmpty(moment.spec.tags)}">
+            <a th:each="t : ${moment.spec.tags}" th:href="@{/moments(tag=${t})}" th:text="'#' + ${t}"></a>
+          </div>
+
+          <div class="x-detail-meta" th:if="${moment.spec.releaseTime != null}">
+            <time
+              th:datetime="${moment.spec.releaseTime}"
+              th:text="${#temporals.format(moment.spec.releaseTime, #messages.msg('format.dateTime'))}"
+            ></time>
+          </div>
+
+          <div class="x-actions" style="max-width: none; border-bottom: 1px solid var(--border)">
+            <a class="x-action" data-kind="reply" href="#comments" th:if="${haloCommentEnabled}" th:title="#{action.reply}">
+              <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
+            </a>
+            <button
+              class="x-action"
+              type="button"
+              data-kind="like"
+              data-like
+              data-like-kind="moment"
+              th:title="#{action.like}"
+              th:attr="data-post-name=${moment.metadata.name}"
+            >
+              <span class="x-action-icon"><iconify-icon icon="ri:heart-3-line"></iconify-icon></span>
+            </button>
+            <button class="x-action" type="button" data-kind="share" data-share th:title="#{action.share}">
+              <span class="x-action-icon"><iconify-icon icon="ri:share-line"></iconify-icon></span>
+            </button>
+          </div>
+        </article>
+
+        <section class="x-comments" id="comments" th:if="${haloCommentEnabled}">
+          <th:block th:replace="~{modules/tweet :: commentsHead(count=${moment.stats?.approvedComment})}"></th:block>
+          <div class="x-comments-widget"><halo:comment group="moment.halo.run" kind="Moment" th:attr="name=${moment.metadata.name}" /></div>
+        </section>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='moments')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='moments', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

@@ -1,0 +1,224 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+  <!--/* 窄屏顶栏：左边抽屉入口，中间站点标志，右边显示设置。
+       和 X 一样只在根页面（首页、探索）出现，其它页面只留「返回 + 标题」一行，省出正文高度 */-->
+  <th:block th:fragment="top(root)">
+    <div
+      class="x-mobile-top"
+      th:if="${root}"
+      th:with="pf=${theme.config.profile},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <button type="button" data-open-drawer th:aria-label="#{a11y.openMenu}">
+        <img class="x-avatar x-avatar--sm" th:src="${xavatar}" alt="" loading="lazy" />
+      </button>
+      <a class="x-logo" th:href="@{/}" th:aria-label="#{common.home}">
+        <img th:if="${not #strings.isEmpty(theme.config.nav?.logo)}" th:src="${theme.config.nav.logo}" alt="" />
+        <svg th:unless="${not #strings.isEmpty(theme.config.nav?.logo)}" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+          ></path>
+        </svg>
+      </a>
+      <button class="x-icon-button" type="button" data-open-display th:aria-label="#{common.displaySettings}">
+        <iconify-icon icon="ri:settings-3-line" aria-hidden="true"></iconify-icon>
+      </button>
+    </div>
+  </th:block>
+
+  <!--/* 底部 tab bar + 悬浮发帖按钮 */-->
+  <th:block th:fragment="tabbar(current)">
+    <nav class="x-tabbar" th:aria-label="#{a11y.bottomNav}" th:with="profileLinkRaw=${#strings.trim(theme.config.nav?.profile_link ?: '')}, profileLink=${#strings.isEmpty(profileLinkRaw) ? '/about' : (#strings.startsWith(profileLinkRaw, '/') or #strings.startsWith(profileLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'sms:') ? profileLinkRaw : '/' + profileLinkRaw)},
+             slotRaw=${theme.config.nav?.tabbar_fourth ?: 'bookmarks'},
+             slot=${(slotRaw == 'links' or slotRaw == 'moments' or slotRaw == 'photos' or slotRaw == 'tags' or slotRaw == 'off') ? slotRaw : 'bookmarks'},
+             slotHref=${slot == 'links' ? '/links' : (slot == 'moments' ? '/moments' : (slot == 'photos' ? '/photos' : (slot == 'tags' ? site.routes.tagsUri : '/bookmarks')))},
+             slotIcon=${slot == 'links' ? 'ri:group-line' : (slot == 'moments' ? 'ri:chat-3-line' : (slot == 'photos' ? 'ri:image-2-line' : (slot == 'tags' ? 'ri:price-tag-3-line' : 'ri:bookmark-line')))},
+             slotIconActive=${slot == 'links' ? 'ri:group-fill' : (slot == 'moments' ? 'ri:chat-3-fill' : (slot == 'photos' ? 'ri:image-2-fill' : (slot == 'tags' ? 'ri:price-tag-3-fill' : 'ri:bookmark-fill')))},
+             slotLabel=${#messages.msg(slot == 'links' ? 'common.links' : (slot == 'moments' ? 'common.moments' : (slot == 'photos' ? 'common.photos' : (slot == 'tags' ? 'common.tags' : 'common.bookmarks'))))}">
+      <a th:href="@{/}" th:classappend="${current == 'home'} ? 'is-active'" th:attr="aria-current=${current == 'home'} ? 'page' : null" th:aria-label="#{common.home}">
+        <iconify-icon th:attr="icon=${current == 'home'} ? 'ri:home-5-fill' : 'ri:home-5-line'"></iconify-icon>
+      </a>
+      <a
+        th:href="@{${site.routes.archivesUri}}"
+        th:classappend="${current == 'explore'} ? 'is-active'" th:attr="aria-current=${current == 'explore'} ? 'page' : null"
+        th:aria-label="#{common.explore}"
+      >
+        <iconify-icon icon="ri:search-line"></iconify-icon>
+      </a>
+      <a
+        th:href="@{${site.routes.categoriesUri}}"
+        th:classappend="${current == 'categories'} ? 'is-active'" th:attr="aria-current=${current == 'categories'} ? 'page' : null"
+        th:aria-label="#{common.categories}"
+      >
+        <iconify-icon th:attr="icon=${current == 'categories'} ? 'ri:list-check-2' : 'ri:list-check-2'"></iconify-icon>
+      </a>
+      <!--/* 第四格站长自己挑。选了书签又把书签功能关掉的话这格就空出来，
+           剩下四格会自动等分——靠的是 .x-tabbar a 上的 flex: 1，不是容器的 space-around
+           （五个 a 把容器宽度吃干净，justify-content 分不到剩余空间） */-->
+      <a
+        th:if="${slot != 'off' and (slot != 'bookmarks' or theme.config.features?.bookmarks != 'off')}"
+        th:href="@{${slotHref}}"
+        th:classappend="${current == slot} ? 'is-active'" th:attr="aria-current=${current == slot} ? 'page' : null"
+        th:aria-label="${slotLabel}"
+      >
+        <iconify-icon th:attr="icon=${current == slot} ? ${slotIconActive} : ${slotIcon}"></iconify-icon>
+      </a>
+      <a th:href="@{${profileLink}}" th:classappend="${current == 'profile'} ? 'is-active'" th:attr="aria-current=${current == 'profile'} ? 'page' : null" th:aria-label="#{common.profile}">
+        <iconify-icon th:attr="icon=${current == 'profile'} ? 'ri:user-fill' : 'ri:user-line'"></iconify-icon>
+      </a>
+    </nav>
+
+    <a
+      class="x-fab"
+      th:with="postLinkRaw=${#strings.trim(theme.config.nav?.post_button_link ?: '')}, postLink=${#strings.isEmpty(postLinkRaw) ? '/console/posts/editor' : (#strings.startsWith(postLinkRaw, '/') or #strings.startsWith(postLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'sms:') ? postLinkRaw : 'https://' + postLinkRaw)}"
+      th:href="@{${postLink}}"
+      th:aria-label="#{common.compose}"
+    >
+      <iconify-icon icon="ri:quill-pen-fill" aria-hidden="true"></iconify-icon>
+    </a>
+  </th:block>
+
+  <!--/* 抽屉：X 手机端点头像拉出来的那一栏。资料 + 导航 + 设置区 + 底部快速换肤 */-->
+  <!--/* 抽屉只跟着根页面的顶栏走：别的页面没有打开它的按钮，渲染出来也是死的 */-->
+  <th:block th:fragment="drawer(current, root)">
+    <div
+      th:if="${root}"
+      class="x-drawer"
+      data-drawer
+      th:with="profileLinkRaw=${#strings.trim(theme.config.nav?.profile_link ?: '')}, profileLink=${#strings.isEmpty(profileLinkRaw) ? '/about' : (#strings.startsWith(profileLinkRaw, '/') or #strings.startsWith(profileLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(profileLinkRaw), 'sms:') ? profileLinkRaw : '/' + profileLinkRaw)},
+               nv=${theme.config.nav},
+               pf=${theme.config.profile},
+               stats=${(#strings.isEmpty(pf?.following) or #strings.isEmpty(pf?.followers)) ? siteStatsFinder.getStats() : null},
+               items=${nv?.items ?: ({'home','explore','categories','tags','bookmarks'})},
+               xname=${pf?.name ?: (site.title)},
+               xhandle=${pf?.handle ?: ('blog')},
+               xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+    >
+      <div class="x-drawer-scrim" data-close-drawer></div>
+      <div class="x-drawer-panel" role="dialog" aria-modal="true" th:aria-label="#{common.menu}">
+        <div class="x-drawer-head">
+          <a th:href="@{${profileLink}}" tabindex="-1" aria-hidden="true">
+            <img class="x-avatar x-avatar--xl" th:src="${xavatar}" th:alt="${xname}" />
+          </a>
+          <div class="x-drawer-name">
+            <span th:text="${xname}"></span>
+            <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+          </div>
+          <div class="x-drawer-handle" th:text="'@' + ${xhandle}"></div>
+
+          <div class="x-drawer-stats">
+            <a th:href="@{${site.routes.categoriesUri}}">
+              <strong th:text="${not #strings.isEmpty(pf?.following) ? pf.following : (stats?.category ?: 0)}"></strong>
+              [[#{common.following}]]
+            </a>
+            <a th:href="@{${site.routes.archivesUri}}">
+              <strong data-format-count="keep" th:text="${not #strings.isEmpty(pf?.followers) ? pf.followers : (stats?.visit ?: 0)}"></strong>
+              [[#{common.followers}]]
+            </a>
+          </div>
+        </div>
+
+        <ul class="x-nav-list x-drawer-nav">
+          <th:block th:if="${#lists.contains(items, 'home')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='home', icon='ri:home-5-line', iconActive='ri:home-5-fill', text=#{common.home}, href='/', current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'explore')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='explore', icon='ri:hashtag', iconActive='ri:hashtag', text=#{common.explore}, href=${site.routes.archivesUri}, current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'categories')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='categories', icon='ri:list-check-2', iconActive='ri:list-check-2', text=#{common.categories}, href=${site.routes.categoriesUri}, current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'tags')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='tags', icon='ri:price-tag-3-line', iconActive='ri:price-tag-3-fill', text=#{common.tags}, href=${site.routes.tagsUri}, current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'bookmarks') and theme.config.features?.bookmarks != 'off'}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='bookmarks', icon='ri:bookmark-line', iconActive='ri:bookmark-fill', text=#{common.bookmarks}, href='/bookmarks', current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'moments')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='moments', icon='ri:chat-3-line', iconActive='ri:chat-3-fill', text=#{common.moments}, href='/moments', current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'photos')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='photos', icon='ri:image-2-line', iconActive='ri:image-2-fill', text=#{common.photos}, href='/photos', current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'links')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='links', icon='ri:group-line', iconActive='ri:group-fill', text=#{common.links}, href='/links', current=${current})}"
+            ></th:block>
+          </th:block>
+          <th:block th:if="${#lists.contains(items, 'profile')}">
+            <th:block
+              th:replace="~{modules/nav :: navItem(key='profile', icon='ri:user-line', iconActive='ri:user-fill', text=#{common.profile}, href=${profileLink}, current=${current})}"
+            ></th:block>
+          </th:block>
+
+          <li th:each="item : ${nv?.extra}" th:if="${not #strings.isEmpty(item.text)}" th:with="itemLinkRaw=${#strings.trim(item.link ?: '')}, itemLink=${#strings.isEmpty(itemLinkRaw) ? '#' : (#strings.startsWith(itemLinkRaw, '/') or #strings.startsWith(itemLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'sms:') ? itemLinkRaw : 'https://' + itemLinkRaw)}">
+            <a class="x-nav-link" th:href="@{${itemLink}}">
+              <iconify-icon th:attr="icon=${item.icon ?: ('ri:hashtag')}" aria-hidden="true"></iconify-icon>
+              <span th:text="${item.text}"></span>
+            </a>
+          </li>
+        </ul>
+
+        <div class="x-drawer-divider"></div>
+
+        <!--/* 和 X 一样，默认折起来 */-->
+        <div class="x-drawer-section" data-drawer-section>
+          <button class="x-drawer-section-toggle" type="button" data-drawer-section-toggle aria-expanded="false">
+            <span th:text="#{common.settingsSupport}">设置与支持</span>
+            <iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <div class="x-drawer-section-body">
+            <button class="x-nav-link" type="button" data-open-display>
+              <iconify-icon icon="ri:palette-line" aria-hidden="true"></iconify-icon>
+              <span th:text="#{common.display}">显示</span>
+            </button>
+            <a class="x-nav-link" th:href="@{/console}">
+              <iconify-icon icon="ri:settings-3-line" aria-hidden="true"></iconify-icon>
+              <span th:text="#{common.admin}">后台管理</span>
+            </a>
+            <a class="x-nav-link" href="/rss.xml">
+              <iconify-icon icon="ri:rss-line" aria-hidden="true"></iconify-icon>
+              <span th:text="#{common.rssSubscribe}">RSS 订阅</span>
+            </a>
+          </div>
+        </div>
+
+        <!--/* 备案号：底部那条在无限滚动的列表页上够不着，这里是手机端真正能看到的那处 */-->
+        <div class="x-drawer-icp" th:if="${not #strings.isEmpty(theme.config.sidebar?.icp)}">
+          <a
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            rel="noopener"
+            th:text="${#strings.trim(theme.config.sidebar.icp)}"
+          ></a>
+        </div>
+
+        <div class="x-drawer-foot">
+          <button class="x-icon-button" type="button" data-theme-cycle th:aria-label="#{display.cycleBg}">
+            <iconify-icon icon="ri:sun-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <button class="x-icon-button" type="button" data-open-display th:aria-label="#{common.displaySettings}">
+            <iconify-icon icon="ri:palette-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <button class="x-icon-button" type="button" data-close-drawer th:aria-label="#{a11y.closeMenu}" style="margin-left: auto">
+            <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </th:block>
+</th:block>

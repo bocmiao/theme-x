@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=${category.spec.displayName + ' - ' + site.title}, desc=${category.spec.description}, image=${category.spec.cover}, canonical=${category.status.permalink}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <!--/*
+      Halo 给分类页注入的 posts 走的是默认排序（置顶优先 + 时间倒序），系列要的是发布顺序，
+      所以这里自己查一次：postFinder.list(Map) 是唯一能带排序参数的入口，显式 sort 会盖过默认的置顶优先。
+      sort 的字段必须建过索引，spec.publishTime 可以；写个不存在的字段名整页 500。
+    */-->
+    <div
+      class="x-shell"
+      th:with="sCapRaw=${#conversions.convert(theme.config.post?.series_count ?: (30), 'java.lang.Integer')},
+               sCap=${sCapRaw &lt; 1 ? 1 : (sCapRaw > 200 ? 200 : sCapRaw)},
+               sPool=${postFinder.list({page: 1, size: sCap, categoryName: category.metadata.name, sort: {'spec.publishTime,asc'}})},
+               sItems=${sPool.items},
+               sSize=${#lists.size(sItems)},
+               thumbs=${theme.config.features?.thumbnails != 'off'}"
+    >
+      <th:block th:replace="~{modules/nav :: nav(current='categories')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${category.spec.displayName}"></h1>
+              <!--/* 用查回来的 total，不用 category.postCount：勾了「不显示在列表中」时两者会打架 */-->
+              <div class="x-header-sub" th:text="${#messages.msg('series.count', sPool.total)}"></div>
+            </div>
+          </div>
+        </header>
+
+        <!--/* 和「列表」模板一样的横幅头，只是下面排的是有序的正文 */-->
+        <section style="border-bottom: 1px solid var(--border)">
+          <div
+            class="x-profile-banner"
+            style="aspect-ratio: 2 / 1; max-height: 300px"
+            th:if="${not #strings.isEmpty(category.spec.cover)}"
+          >
+            <img th:src="${category.spec.cover}" th:alt="${category.spec.displayName}" data-lightbox data-alt-skip />
+          </div>
+
+          <div style="padding: 16px; text-align: center">
+            <div class="x-series-badge">
+              <iconify-icon icon="ri:stack-line" aria-hidden="true"></iconify-icon>
+              <span th:text="#{series.label}">系列</span>
+            </div>
+            <h2 style="font-size: 1.533rem; margin-bottom: 8px" th:text="${category.spec.displayName}"></h2>
+            <p
+              style="color: var(--text-secondary); line-height: 1.4"
+              th:if="${not #strings.isEmpty(category.spec.description)}"
+              th:text="${category.spec.description}"
+            ></p>
+          </div>
+        </section>
+
+        <ol class="x-series-page" th:if="${sSize > 0}">
+          <th:block th:each="sp, st : ${sItems}">
+            <li>
+              <a th:href="@{${sp.status.permalink}}">
+                <span class="x-series-num" th:text="${st.count}"></span>
+                <span class="x-series-main">
+                  <span class="x-series-title" th:text="${sp.spec.title}"></span>
+                  <span
+                    class="x-series-excerpt"
+                    th:if="${not #strings.isEmpty(sp.status.excerpt)}"
+                    th:text="${sp.status.excerpt}"
+                  ></span>
+                  <span class="x-series-meta">
+                    <time
+                      th:datetime="${sp.spec.publishTime}"
+                      th:text="${#temporals.format(sp.spec.publishTime, #messages.msg('format.date'))}"
+                    ></time>
+                    <span th:with="cnt=${sp.stats.visit ?: 0}" th:text="'· ' + ${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></span>
+                  </span>
+                </span>
+                <img
+                  class="x-explore-thumb"
+                  th:if="${not #strings.isEmpty(sp.spec.cover)}"
+                  th:src="${thumbs}
+                    ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${sp.spec.cover},size='s')}
+                    : ${sp.spec.cover}"
+                  th:attr="data-fallback=${thumbs} ? ${sp.spec.cover} : null"
+                  alt=""
+                  loading="lazy"
+                />
+              </a>
+            </li>
+          </th:block>
+        </ol>
+
+        <!--/* 系列超过上限时说清楚只排了前面这些 */-->
+        <a
+          class="x-card-more"
+          th:if="${sPool.total > sCap}"
+          th:href="@{${site.routes.archivesUri}}"
+          th:text="#{common.showMore}"
+        >显示更多</a>
+
+        <th:block th:if="${sSize == 0}">
+          <th:block th:replace="~{modules/tweet :: empty(title=#{empty.emptyList.title}, text=#{empty.emptyCategory.text})}"></th:block>
+        </th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='categories')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='categories', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=${author.spec.displayName + (posts.page > 1 ? ' - ' + #messages.msg('title.pageN', posts.page) : '') + ' - ' + site.title}, desc=${author.spec.bio}, image=${theme.config.profile?.banner}, canonical=${posts.page > 1 ? author.status.permalink + '/page/' + posts.page : author.status.permalink}, type='profile')}"
+    ></th:block>
+    <!--/* 超出总页数的地址 Halo 照样渲染，是一串空页面，别让爬虫收进去 */-->
+    <meta name="robots" content="noindex,follow" th:if="${posts.page > posts.totalPages}" />
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='profile')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <div class="x-header-title" th:text="${author.spec.displayName}"></div>
+              <div class="x-header-sub" th:with="cnt=${posts.total ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <th:block
+          th:replace="~{modules/profile :: header(
+            name=${author.spec.displayName},
+            handle=${author.metadata.name},
+            avatar=${author.spec.avatar} ?: (${theme.config.profile?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg')}),
+            bio=${author.spec.bio ?: (site.subtitle)},
+            postCount=${posts.total})}"
+        ></th:block>
+
+        <th:block th:replace="~{modules/profile :: tabs(current='posts')}"></th:block>
+
+        <div class="x-timeline" data-timeline>
+          <th:block th:each="post : ${posts.items}">
+            <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+          </th:block>
+
+          <th:block th:if="${#lists.isEmpty(posts.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noAuthorPosts.title}, text=#{empty.noAuthorPosts.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${posts})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='profile')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='profile', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+# GitHub 生成的源码包（archive/refs/heads/main.zip）就是 Halo「远程下载」用的主题包，
+# 让它和手动打出来的 zip 保持一致：仓库自身的配置文件不打进去
+.gitignore     export-ignore
+.gitattributes export-ignore

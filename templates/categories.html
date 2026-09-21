@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.categories} + ${site.title}, desc=#{desc.categories}, image=null, canonical=${site.routes.categoriesUri}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='categories')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1" th:with="allCats=${categoryFinder.listAll()}">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="#{common.categories}">分类</h1>
+              <div class="x-header-sub" th:with="cnt=${#lists.size(allCats) ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.category' : 'unit.categories')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <th:block th:replace="~{modules/profile :: tabs(current='categories')}"></th:block>
+
+        <div>
+          <th:block th:replace="~{modules/category :: rows(list=${categories}, depth=0)}"></th:block>
+
+          <th:block th:if="${#lists.isEmpty(categories)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noCategories.title}, text=#{empty.noCategories.text})}"></th:block>
+          </th:block>
+        </div>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='categories')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='categories', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

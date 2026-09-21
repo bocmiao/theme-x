@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=${category.spec.displayName + (posts.page > 1 ? ' - ' + #messages.msg('title.pageN', posts.page) : '') + ' - ' + site.title}, desc=${category.spec.description}, image=${category.spec.cover}, canonical=${posts.page > 1 ? category.status.permalink + '/page/' + posts.page : category.status.permalink}, type='website')}"
+    ></th:block>
+    <!--/* 超出总页数的地址 Halo 照样渲染，是一串空页面，别让爬虫收进去 */-->
+    <meta name="robots" content="noindex,follow" th:if="${posts.page > posts.totalPages}" />
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='categories')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="${category.spec.displayName}"></h1>
+              <div class="x-header-sub" th:with="cnt=${category.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <!--/* X 的 List 详情页：一张宽横幅压着标题 */-->
+        <section style="border-bottom: 1px solid var(--border)">
+          <div
+            class="x-profile-banner"
+            style="aspect-ratio: 2 / 1; max-height: 300px"
+            th:if="${not #strings.isEmpty(category.spec.cover)}"
+          >
+            <img th:src="${category.spec.cover}" th:alt="${category.spec.displayName}" data-lightbox data-alt-skip />
+          </div>
+
+          <div style="padding: 16px; text-align: center">
+            <h2 style="font-size: 1.533rem; margin-bottom: 8px" th:text="${category.spec.displayName}"></h2>
+            <p
+              style="color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px"
+              th:if="${not #strings.isEmpty(category.spec.description)}"
+              th:text="${category.spec.description}"
+            ></p>
+            <!--/* 子分类在 spec.children 里，是一串名字；CategoryVo 上没有 children */-->
+            <div class="x-profile-stats" style="justify-content: center">
+              <span><strong th:text="${category.postCount ?: 0}"></strong>[[${#messages.msg((category.postCount ?: 0) == 1 ? 'unit.post' : 'unit.posts')}]]</span>
+              <span th:if="${not #lists.isEmpty(category.spec.children)}">
+                <strong th:text="${#lists.size(category.spec.children)}"></strong>[[${#messages.msg(#lists.size(category.spec.children) == 1 ? 'unit.subCategory' : 'unit.subCategories')}]]
+              </span>
+            </div>
+          </div>
+
+          <div
+            class="x-chip-row"
+            th:if="${not #lists.isEmpty(category.spec.children)}"
+            th:with="allCats=${categoryFinder.listAll()}"
+            style="border: 0; justify-content: center"
+          >
+            <!--/* 不用 categoryFinder.getByName：子分类被删之后它会抛异常连累整页。
+                 分类总量很小，遍历 listAll() 更稳。 */-->
+            <th:block th:each="childName : ${category.spec.children}">
+              <th:block th:each="child : ${allCats}">
+                <a
+                  class="x-chip"
+                  th:if="${child.metadata.name == childName}"
+                  th:href="@{${child.status.permalink}}"
+                  th:text="${child.spec.displayName}"
+                ></a>
+              </th:block>
+            </th:block>
+          </div>
+        </section>
+
+        <div class="x-timeline" data-timeline>
+          <th:block th:each="post : ${posts.items}">
+            <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+          </th:block>
+
+          <th:block th:if="${#lists.isEmpty(posts.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.emptyList.title}, text=#{empty.emptyCategory.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${posts})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='categories')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='categories', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

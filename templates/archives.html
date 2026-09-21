@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.explore} + ${site.title}, desc=${site.subtitle}, image=null, canonical=${archives.page > 1 ? null : site.routes.archivesUri}, type='website')}"
+    ></th:block>
+    <!--/* 超出总页数的地址 Halo 照样渲染，是一串空页面，别让爬虫收进去 */-->
+    <meta name="robots" content="noindex,follow" th:if="${archives.page > archives.totalPages}" />
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='explore')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=true)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <h1 class="x-header-title" th:text="#{common.explore}">探索</h1>
+            <div class="x-header-actions">
+              <button class="x-icon-button" type="button" data-open-display th:aria-label="#{common.displaySettings}">
+                <iconify-icon icon="ri:settings-3-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+
+          <!--/* 窄屏没有右栏，把搜索框搬到这里；右栏在的时候由 CSS 收起，免得一页两个搜索框 */-->
+          <div class="x-header-search" th:if="${theme.config.sidebar?.search != 'off'}">
+            <form class="x-search" role="search" data-search onsubmit="return false" style="position: relative">
+              <iconify-icon icon="ri:search-line" aria-hidden="true"></iconify-icon>
+              <input type="search" data-search-input role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" th:placeholder="#{a11y.searchPosts}" th:aria-label="#{a11y.searchPosts}" autocomplete="off" />
+              <button class="x-search-clear" type="button" data-search-clear th:aria-label="#{a11y.clear}">
+                <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+              </button>
+              <div class="x-suggest" data-search-suggest role="listbox" th:aria-label="#{a11y.searchSuggest}"></div>
+            </form>
+          </div>
+        </header>
+
+        <th:block th:replace="~{modules/profile :: tabs(current='posts')}"></th:block>
+
+        <!--/* 标签快捷入口 */-->
+        <th:block th:with="tags=${tagFinder.list(1, 12).items}">
+          <div class="x-chip-row" th:if="${not #lists.isEmpty(tags)}">
+            <a
+              th:each="tag, st : ${tags}"
+              th:if="${st.index &lt; 12 and tag.postCount != null and tag.postCount > 0}"
+              class="x-chip"
+              th:href="@{${tag.status.permalink}}"
+            >
+              <span th:text="'#' + ${tag.spec.displayName}"></span>
+              <small th:with="cnt=${tag.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></small>
+            </a>
+            <a class="x-chip" th:href="@{${site.routes.tagsUri}}" th:text="#{common.allTags}">全部标签</a>
+          </div>
+        </th:block>
+
+        <!--/* 归档：按年月分组，组头吸顶 */-->
+        <div class="x-timeline" data-timeline>
+          <th:block th:each="archive : ${archives.items}">
+            <section class="x-archive-group" th:each="month : ${archive.months}">
+              <h2 class="x-archive-head" th:text="${#temporals.format(month.posts[0].spec.publishTime, #messages.msg('format.archiveMonth'))} + ' · ' + ${#lists.size(month.posts) + #messages.msg(#lists.size(month.posts) == 1 ? 'unit.postShort' : 'unit.postsShort')}"></h2>
+              <th:block th:each="post : ${month.posts}">
+                <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
+              </th:block>
+            </section>
+          </th:block>
+
+          <th:block th:if="${#lists.isEmpty(archives.items)}">
+            <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noContent.title}, text=#{empty.noContent.text})}"></th:block>
+          </th:block>
+        </div>
+
+        <th:block th:replace="~{modules/tweet :: loader}"></th:block>
+        <th:block th:replace="~{modules/pagination :: pagination(list=${archives})}"></th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='explore')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='explore', root=true)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

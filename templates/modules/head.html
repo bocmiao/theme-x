@@ -1,0 +1,235 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <th:block th:fragment="head(title, desc, image, canonical, type)">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <title th:text="${title ?: (site.title)}"></title>
+
+    <!--/* permalink 给的是相对路径，拼成绝对地址再当 canonical 用 */-->
+    <th:block
+      th:with="base=${#strings.endsWith(site.url, '/')
+                 ? #strings.substring(site.url, 0, #strings.length(site.url) - 1)
+                 : site.url},
+               canonicalUrl=${#strings.isEmpty(canonical)
+                 ? null
+                 : (#strings.startsWith(canonical, 'http') ? canonical : base + canonical)},
+               imageUrl=${#strings.isEmpty(image)
+                 ? null
+                 : (#strings.startsWith(image, 'http') ? image : (#strings.startsWith(image, '//') ? 'https:' + image : base + image))}"
+    >
+      <link th:if="${canonicalUrl != null}" rel="canonical" th:href="${canonicalUrl}" />
+
+      <!--/* 文章、独立页面的 description Halo 会自己注入（后台「元数据」里填的优先），首页配了 SEO 描述时同理，
+           主题再输出一条就重复了，而且排在前面会把站长填的盖掉 */-->
+      <meta
+        name="description"
+        th:if="${not #strings.isEmpty(desc) and _templateId != 'post' and _templateId != 'page' and not (_templateId == 'index' and not #strings.isEmpty(site.seo?.description))}"
+        th:content="${desc}"
+      />
+      <meta property="og:type" th:content="${type ?: ('website')}" />
+      <meta property="og:url" th:if="${canonicalUrl != null}" th:content="${canonicalUrl}" />
+      <meta property="og:site_name" th:content="${site.title}" />
+      <meta property="og:locale" th:content="#{meta.ogLocale}" />
+      <meta property="og:title" th:content="${title ?: (site.title)}" />
+      <meta property="og:description" th:if="${not #strings.isEmpty(desc)}" th:content="${desc}" />
+      <meta property="og:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
+      <meta name="twitter:card" th:content="${imageUrl != null} ? 'summary_large_image' : 'summary'" />
+      <meta name="twitter:title" th:content="${title ?: (site.title)}" />
+      <meta name="twitter:description" th:if="${not #strings.isEmpty(desc)}" th:content="${desc}" />
+      <meta name="twitter:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
+    </th:block>
+
+    <link th:if="${#strings.isEmpty(site.favicon)}" rel="icon" type="image/svg+xml" th:href="@{/themes/theme-x/assets/images/logo.svg(v=${theme.spec.version})}" />
+    <link rel="alternate" type="application/rss+xml" th:title="${site.title}" href="/rss.xml" />
+
+    <!--/* 配色先落到 <html> 再渲染，否则夜间模式会闪一下白 */-->
+    <script
+      th:inline="javascript"
+      th:with="st=${theme.config.style}"
+    >
+      /*<![CDATA[*/
+      (function () {
+        var root = document.documentElement;
+        var defaults = {
+          bg: /*[[${st?.background}]]*/ "auto",
+          accent: /*[[${st?.accent}]]*/ "blue",
+          size: /*[[${st?.font_size}]]*/ "3",
+          avatar: /*[[${st?.avatar_shape}]]*/ "circle"
+        };
+        root.setAttribute("data-bg-default", defaults.bg || "auto");
+
+        function read(key) {
+          try { return localStorage.getItem(key); } catch (e) { return null; }
+        }
+
+        var bg = read("x:theme");
+        if (bg !== "light" && bg !== "dim" && bg !== "dark") {
+          bg = defaults.bg || "auto";
+          if (bg === "auto") {
+            bg = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+        }
+        root.setAttribute("data-theme", bg);
+        var tc = bg === "dark" ? "#000000" : bg === "dim" ? "#15202b" : "#ffffff";
+        var tm = document.querySelectorAll('meta[name="theme-color"]');
+        for (var ti = 0; ti < tm.length; ti++) {
+          tm[ti].removeAttribute("media");
+          tm[ti].setAttribute("content", tc);
+        }
+
+        var accent = read("x:accent") || defaults.accent || "blue";
+        root.setAttribute("data-accent", accent);
+
+        var size = read("x:font-size") || defaults.size || "3";
+        root.setAttribute("data-font-size", size);
+
+        root.setAttribute("data-avatar", read("x:avatar") || defaults.avatar || "circle");
+      })();
+      /*]]>*/
+    </script>
+
+    <link rel="stylesheet" th:href="@{/assets/css/main.css(v=${theme.spec.version})}" />
+
+    <!--/* 字体栈要原样输出（转义了引号和逗号就不是合法的 font-family 了），
+         所以这里是 unescaped 的 [( )]。正因为不转义，先把能从 style 标签里逃出去的字符挖掉：
+         < > ; { } 和反斜杠。合法的字体名只会用到字母、数字、空格、引号、逗号、连字符。 */-->
+    <th:block
+      th:if="${not #strings.isEmpty(theme.config.style?.font_family)}"
+      th:with="safeFont=${#strings.replace(#strings.replace(#strings.replace(#strings.replace(#strings.replace(#strings.replace(theme.config.style.font_family, '<', ''), '>', ''), ';', ''), '{', ''), '}', ''), '\', '')}"
+    >
+      <style th:inline="css">
+        /*<![CDATA[*/
+        :root { --font: [(${safeFont})], var(--font-default); }
+        /*]]>*/
+      </style>
+    </th:block>
+
+    <th:block th:if="${not #strings.isEmpty(theme.config.advanced?.custom_css)}">
+      <style th:utext="${theme.config.advanced.custom_css}"></style>
+    </th:block>
+
+    <!--/* 图标走 iconify 的 web component，先握手省掉首个图标的 DNS + TLS 往返 */-->
+    <th:block
+      th:with="cdn=${theme.config.style?.icon_cdn ?: ('https://cdn.jsdelivr.net/npm/iconify-icon@2/dist/iconify-icon.min.js')}"
+    >
+      <!--/* 自托管的地址里没有 /npm/，substringBefore 会返回空串，那样这条 preconnect 只会多连自己一次 */-->
+      <link
+        rel="preconnect"
+        th:if="${#strings.contains(cdn, '/npm/')}"
+        th:href="${#strings.substringBefore(cdn, '/npm/')}"
+        crossorigin="anonymous"
+      />
+      <link rel="preconnect" href="https://api.iconify.design" crossorigin="anonymous" />
+      <script defer th:src="${cdn}"></script>
+    </th:block>
+
+    <!--/* 主题脚本要读这些开关，统一挂在 window 上，省得每个模板都往 DOM 里塞 data- */-->
+    <script
+      th:inline="javascript"
+      th:with="ft=${theme.config.features}"
+    >
+      /*<![CDATA[*/
+      // 这里只输出原始值（"on" / "off" / null）。Thymeleaf 的 JS 内联会把注释后面到逗号为止的
+      // 默认值整段替换掉，所以别在这里写 `!== "off"` 之类的表达式——会被吞掉；布尔化在 theme.js 里做。
+      window.__X__ = {
+        infinite: /*[[${ft?.infinite}]]*/ "on",
+        shortcuts: /*[[${ft?.shortcuts}]]*/ "on",
+        lightbox: /*[[${ft?.lightbox}]]*/ "on",
+        altBadge: /*[[${ft?.alt_badge}]]*/ "on",
+        softNav: /*[[${ft?.soft_nav}]]*/ "on",
+        bookmarks: /*[[${ft?.bookmarks}]]*/ "on",
+        relativeTime: /*[[${ft?.relative_time}]]*/ "on",
+        newPosts: /*[[${ft?.new_posts}]]*/ "on",
+        codeCopy: /*[[${ft?.code_copy}]]*/ "on",
+        progress: /*[[${ft?.reading_progress}]]*/ "on",
+        codeHighlight: /*[[${ft?.code_highlight}]]*/ "on",
+        restoreScroll: /*[[${ft?.restore_scroll}]]*/ "on",
+        highlightCdn:
+          /*[[${theme.config.style?.highlight_cdn}]]*/ "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11/highlight.min.js",
+        epic: {
+          api: /*[[${theme.config.epic?.api}]]*/ "",
+          fallback: /*[[${theme.config.epic?.fallback}]]*/ "on",
+          upcoming: /*[[${theme.config.epic?.upcoming}]]*/ "on",
+          count: /*[[${theme.config.epic?.count}]]*/ 4,
+          cacheHours: /*[[${theme.config.epic?.cache_hours}]]*/ 3
+        }
+      };
+      /*]]>*/
+    </script>
+    <!--/* theme.js 里的用户可见文案。取不到就用脚本里写死的中文兜底，不会变成空白 */-->
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      window.__X_I18N__ = {
+        "js.numberStyle": /*[[#{js.numberStyle}]]*/ "cjk",
+        "js.justNow": /*[[#{js.justNow}]]*/ "",
+        "js.minutes": /*[[#{js.minutes}]]*/ "",
+        "js.hours": /*[[#{js.hours}]]*/ "",
+        "js.days": /*[[#{js.days}]]*/ "",
+        "js.monthDay": /*[[#{js.monthDay}]]*/ "",
+        "js.yearMonthDay": /*[[#{js.yearMonthDay}]]*/ "",
+        "js.likedAlready": /*[[#{js.likedAlready}]]*/ "",
+        "js.bookmarkAdded": /*[[#{js.bookmarkAdded}]]*/ "",
+        "js.bookmarkRemoved": /*[[#{js.bookmarkRemoved}]]*/ "",
+        "js.unbookmark": /*[[#{js.unbookmark}]]*/ "",
+        "js.removeBookmark": /*[[#{js.removeBookmark}]]*/ "",
+        "js.untitled": /*[[#{js.untitled}]]*/ "",
+        "js.confirmClearBookmarks": /*[[#{js.confirmClearBookmarks}]]*/ "",
+        "js.bookmarksCleared": /*[[#{js.bookmarksCleared}]]*/ "",
+        "js.linkCopied": /*[[#{js.linkCopied}]]*/ "",
+        "js.copyFailed": /*[[#{js.copyFailed}]]*/ "",
+        "js.copyFailedManual": /*[[#{js.copyFailedManual}]]*/ "",
+        "js.repostCopied": /*[[#{js.repostCopied}]]*/ "",
+        "js.shareCopyLink": /*[[#{js.shareCopyLink}]]*/ "",
+        "js.shareNative": /*[[#{js.shareNative}]]*/ "",
+        "js.shareX": /*[[#{js.shareX}]]*/ "",
+        "js.shareWeibo": /*[[#{js.shareWeibo}]]*/ "",
+        "js.shareMail": /*[[#{js.shareMail}]]*/ "",
+        "js.followed": /*[[#{js.followed}]]*/ "",
+        "js.unfollowed": /*[[#{js.unfollowed}]]*/ "",
+        "js.loadFailedPaging": /*[[#{js.loadFailedPaging}]]*/ "",
+        "js.noMore": /*[[#{js.noMore}]]*/ "",
+        "js.tabEmptyTitle": /*[[#{js.tabEmptyTitle}]]*/ "",
+        "js.tabEmptyText": /*[[#{js.tabEmptyText}]]*/ "",
+        "js.tabFailTitle": /*[[#{js.tabFailTitle}]]*/ "",
+        "js.tabFailText": /*[[#{js.tabFailText}]]*/ "",
+        "js.suggestNone": /*[[#{js.suggestNone}]]*/ "",
+        "js.seeAllResults": /*[[#{js.seeAllResults}]]*/ "",
+        "js.resultCount": /*[[#{js.resultCount}]]*/ "",
+        "js.resultCountPartial": /*[[#{js.resultCountPartial}]]*/ "",
+        "js.searchNoneTitle": /*[[#{js.searchNoneTitle}]]*/ "",
+        "js.searchNoneText": /*[[#{js.searchNoneText}]]*/ "",
+        "js.searching": /*[[#{js.searching}]]*/ "",
+        "js.newPosts": /*[[#{js.newPosts}]]*/ "",
+        "js.readTime": /*[[#{js.readTime}]]*/ "",
+        "js.cycleBg": /*[[#{js.cycleBg}]]*/ "",
+        "js.copy": /*[[#{js.copy}]]*/ "",
+        "js.copied": /*[[#{js.copied}]]*/ "",
+        "common.follow": /*[[#{common.follow}]]*/ "",
+        "common.following": /*[[#{common.following}]]*/ "",
+        "js.unfollow": /*[[#{js.unfollow}]]*/ "",
+        "js.view": /*[[#{js.view}]]*/ "",
+        "js.epicNow": /*[[#{js.epicNow}]]*/ "",
+        "js.epicSoon": /*[[#{js.epicSoon}]]*/ "",
+        "js.epicUntil": /*[[#{js.epicUntil}]]*/ "",
+        "js.epicFrom": /*[[#{js.epicFrom}]]*/ "",
+        "js.epicFree": /*[[#{js.epicFree}]]*/ "",
+        "js.epicClaim": /*[[#{js.epicClaim}]]*/ "",
+        "js.epicView": /*[[#{js.epicView}]]*/ "",
+        "display.light": /*[[#{display.light}]]*/ "",
+        "display.dim": /*[[#{display.dim}]]*/ "",
+        "display.dark": /*[[#{display.dark}]]*/ "",
+        "a11y.lightbox": /*[[#{a11y.lightbox}]]*/ "",
+        "action.bookmark": /*[[#{action.bookmark}]]*/ "",
+        "alt.badge": /*[[#{alt.badge}]]*/ "",
+        "alt.show": /*[[#{alt.show}]]*/ "",
+        "alt.hide": /*[[#{alt.hide}]]*/ ""
+      };
+      /*]]>*/
+    </script>
+    <script defer th:src="@{/assets/js/theme.js(v=${theme.spec.version})}"></script>
+
+    <th:block th:if="${not #strings.isEmpty(theme.config.advanced?.head_html)}" th:utext="${theme.config.advanced.head_html}"></th:block>
+
+  </th:block>
+</th:block>

@@ -1,0 +1,90 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/*
+    X 的个人主页头部：横幅 + 压在横幅上的大头像 + 资料行 + 关注数。
+    横幅、所在地、网站这些站点级的信息都从主题配置里取，姓名/头像/简介由
+    调用方传进来，这样作者页和「关于」页可以共用同一段排版。
+  */-->
+  <th:block th:fragment="header(name, handle, avatar, bio, postCount)">
+    <section
+      th:with="pf=${theme.config.profile},
+               banner=${pf?.banner},
+               following=${pf?.following},
+               followers=${pf?.followers},
+               stats=${stats ?: siteStatsFinder.getStats()}"
+    >
+      <div class="x-profile-banner">
+        <img th:if="${not #strings.isEmpty(banner)}" th:src="${banner}" alt="" data-lightbox />
+      </div>
+
+      <div class="x-profile-body">
+        <div class="x-profile-top">
+          <img class="x-profile-avatar" th:src="${avatar}" th:alt="${name}" />
+          <div class="x-profile-actions">
+            <button class="x-icon-button" type="button" data-open-display th:aria-label="#{common.displaySettings}" th:title="#{common.displaySettings}"
+              style="border: 1px solid var(--border-strong); width: 36px; height: 36px">
+              <iconify-icon icon="ri:more-fill" aria-hidden="true"></iconify-icon>
+            </button>
+            <a class="x-icon-button" href="/rss.xml" th:aria-label="#{common.subscribe}" th:title="#{common.subscribe}"
+              style="border: 1px solid var(--border-strong); width: 36px; height: 36px">
+              <iconify-icon icon="ri:rss-line" aria-hidden="true"></iconify-icon>
+            </a>
+            <th:block th:replace="~{modules/tip :: tipButton(place='profile')}"></th:block>
+            <button class="x-btn" type="button" data-follow data-follow-key="site" th:text="#{common.follow}">关注</button>
+          </div>
+        </div>
+
+        <h1 class="x-profile-name">
+          <span th:text="${name}"></span>
+          <th:block th:replace="~{modules/tweet :: verified}"></th:block>
+        </h1>
+        <div class="x-profile-handle" th:text="'@' + ${handle}"></div>
+
+        <p class="x-profile-bio" th:if="${not #strings.isEmpty(bio)}" th:text="${bio}"></p>
+
+        <div class="x-profile-meta">
+          <span th:if="${not #strings.isEmpty(pf?.location)}">
+            <iconify-icon icon="ri:map-pin-line" aria-hidden="true"></iconify-icon>
+            <span th:text="${pf.location}"></span>
+          </span>
+          <span th:if="${not #strings.isEmpty(pf?.website)}" th:with="siteLinkRaw=${#strings.trim(pf.website ?: '')}, siteLink=${#strings.isEmpty(siteLinkRaw) ? '#' : (#strings.startsWith(siteLinkRaw, '/') or #strings.startsWith(siteLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(siteLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(siteLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(siteLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(siteLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(siteLinkRaw), 'sms:') ? siteLinkRaw : 'https://' + siteLinkRaw)}">
+            <iconify-icon icon="ri:link" aria-hidden="true"></iconify-icon>
+            <a th:href="${siteLink}" th:text="${#strings.replace(#strings.replace(siteLinkRaw, 'https://', ''), 'http://', '')}" target="_blank" rel="noopener"></a>
+          </span>
+          <span th:if="${not #strings.isEmpty(pf?.joined)}">
+            <iconify-icon icon="ri:calendar-line" aria-hidden="true"></iconify-icon>
+            <span th:text="#{profile.joinedPrefix} + ${pf.joined}"></span>
+          </span>
+        </div>
+
+        <div class="x-profile-stats">
+          <a th:href="@{${site.routes.categoriesUri}}">
+            <strong th:text="${not #strings.isEmpty(following) ? following : (stats?.category ?: 0)}"></strong>
+            [[#{common.following}]]
+          </a>
+          <a th:href="@{${site.routes.archivesUri}}">
+            <strong data-format-count th:text="${not #strings.isEmpty(followers) ? followers : (stats?.visit ?: 0)}"></strong>
+            [[#{common.followers}]]
+          </a>
+        </div>
+      </div>
+    </section>
+  </th:block>
+
+  <!--/* 个人主页下面那排标签，当前页高亮 */-->
+  <th:block th:fragment="tabs(current)">
+    <div
+      class="x-tabs"
+      th:with="mediaRaw=${#strings.trim(theme.config.nav?.media_link ?: '')},
+               mediaLink=${#strings.isEmpty(mediaRaw) ? '/media' : (#strings.startsWith(mediaRaw, '/') or #strings.startsWith(mediaRaw, '#') or #strings.startsWith(#strings.toLowerCase(mediaRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(mediaRaw), 'https://') ? mediaRaw : '/' + mediaRaw)}"
+    >
+      <a class="x-tab" th:classappend="${current == 'posts'} ? 'is-active'" th:attr="aria-current=${current == 'posts'} ? 'page' : null" th:href="@{${site.routes.archivesUri}}"><span th:text="#{profile.tabPosts}">帖子</span></a>
+      <a class="x-tab" th:classappend="${current == 'categories'} ? 'is-active'" th:attr="aria-current=${current == 'categories'} ? 'page' : null" th:href="@{${site.routes.categoriesUri}}"><span th:text="#{common.lists}">列表</span></a>
+      <a class="x-tab" th:classappend="${current == 'tags'} ? 'is-active'" th:attr="aria-current=${current == 'tags'} ? 'page' : null" th:href="@{${site.routes.tagsUri}}"><span th:text="#{common.topics}">话题</span></a>
+      <!--/* 五个 <a> 必须写成一个样子：把 <span> 换行会在 <a> 里留下空白文本节点，
+           .x-tab 是 flex 容器，多出来的匿名项迟早会让这一排表现分叉 */-->
+      <!--/* 地址没填就不显示「媒体」，免得点出个 404；正身在媒体页上时当然要显示 */-->
+      <a class="x-tab" th:if="${not #strings.isEmpty(mediaRaw) or current == 'media'}" th:classappend="${current == 'media'} ? 'is-active'" th:attr="aria-current=${current == 'media'} ? 'page' : null" th:href="${mediaLink}"><span th:text="#{profile.tabMedia}">媒体</span></a>
+      <a class="x-tab" th:if="${theme.config.features?.bookmarks != 'off'}" th:classappend="${current == 'bookmarks'} ? 'is-active'" th:attr="aria-current=${current == 'bookmarks'} ? 'page' : null" th:href="@{/bookmarks}"><span th:text="#{common.bookmarks}">书签</span></a>
+    </div>
+  </th:block>
+</th:block>

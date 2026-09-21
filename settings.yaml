@@ -1,0 +1,793 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: theme-x-setting
+spec:
+  forms:
+    # ================================================================ 个人资料
+    - group: profile
+      label: 个人资料
+      formSchema:
+        - $formkit: attachment
+          name: avatar
+          label: 头像
+          help: 左栏、手机抽屉、关于页、留言板和评论区提示用的头像。时间线里优先显示文章作者自己的头像，作者没设头像时才用这张
+          accepts:
+            - "image/*"
+        - $formkit: attachment
+          name: banner
+          label: 个人主页横幅
+          help: 关于页与作者页顶部的大图，建议 1500×500
+          accepts:
+            - "image/*"
+        - $formkit: text
+          name: name
+          label: 显示名
+          help: 留空则使用站点标题
+        - $formkit: text
+          name: handle
+          label: 用户名
+          value: "blog"
+          help: 不用带 @，会自动补上
+        - $formkit: select
+          name: verified
+          label: 认证标记
+          value: "blue"
+          help: 显示名后面的小蓝勾
+          options:
+            - label: 蓝色（个人）
+              value: blue
+            - label: 金色（组织）
+              value: gold
+            - label: 灰色（政府）
+              value: gray
+            - label: 不显示
+              value: "off"
+        - $formkit: textarea
+          name: bio
+          label: 简介
+          rows: 3
+          help: 个人主页头像下方的几行字
+        - $formkit: text
+          name: location
+          label: 所在地
+        - $formkit: text
+          name: website
+          label: 个人网站
+        - $formkit: text
+          name: joined
+          label: 加入时间
+          help: 例如「2024 年 3 月」，留空则不显示
+        - $formkit: text
+          name: following
+          label: 正在关注
+          help: 个人主页的关注数，留空则用分类数量
+        - $formkit: text
+          name: followers
+          label: 关注者
+          help: 留空则用站点总访问量
+
+    # ================================================================ 左栏导航
+    - group: nav
+      label: 左栏导航
+      formSchema:
+        - $formkit: attachment
+          name: logo
+          label: 站点图标
+          help: 左上角的标志，留空则用内置的 X
+          accepts:
+            - "image/*"
+        - $formkit: checkbox
+          name: items
+          label: 内置导航项
+          help: 「瞬间」「图库」「友链」要先装对应的插件才有页面，没装就别勾，否则点进去是 404。「书签」需要你自己建一个别名为 bookmarks 的页面（模板选「书签」），不建也能用——会落到 404 页上由脚本兜底显示。
+          value:
+            - home
+            - explore
+            - categories
+            - tags
+            - bookmarks
+            - profile
+          options:
+            - label: 首页
+              value: home
+            - label: 探索
+              value: explore
+            - label: 分类
+              value: categories
+            - label: 标签
+              value: tags
+            - label: 书签
+              value: bookmarks
+            - label: 个人资料
+              value: profile
+            - label: 瞬间
+              value: moments
+            - label: 图库
+              value: photos
+            - label: 友链
+              value: links
+        - $formkit: repeater
+          name: extra
+          label: 额外导航项
+          value: []
+          help: 追加在内置项下面。图标填 iconify 名称，例如 ri:mail-line
+          children:
+            - $formkit: text
+              name: icon
+              label: 图标
+              value: "ri:hashtag"
+            - $formkit: text
+              name: text
+              label: 文字
+            - $formkit: text
+              name: link
+              label: 链接
+        - $formkit: text
+          name: profile_link
+          label: 「个人资料」指向的地址
+          value: "/about"
+          help: 左栏、手机底栏和抽屉里的「个人资料」都跳这里。站点得真有这个地址的页面——Halo 初始化时自带一个别名为 about 的页面，删掉或改名了就要在这里改
+        - $formkit: select
+          name: tabbar_fourth
+          label: 手机底栏第四个位置
+          value: bookmarks
+          help: 手机底栏最多五格，前三格固定是首页、探索、分类，最后一格固定是个人资料，中间这格可以自己挑。「友链」「瞬间」「图库」要先装对应插件，没装就别选，否则点进去是 404；选「书签」还得「功能 → 书签」是开着的，关掉的话这格会空出来，底栏只剩四格
+          options:
+            - label: 书签
+              value: bookmarks
+            - label: 友链
+              value: links
+            - label: 瞬间
+              value: moments
+            - label: 图库
+              value: photos
+            - label: 标签
+              value: tags
+            - label: 不显示（底栏只留四格）
+              value: "off"
+        - $formkit: text
+          name: media_link
+          label: 「媒体」标签指向的地址
+          help: 留空则个人主页不显示「媒体」标签。想用的话先在后台新建一个页面、自定义模板选「媒体」，再把它的地址（比如 /media）填在这里
+        - $formkit: text
+          name: post_button_text
+          label: 发帖按钮文字
+        - $formkit: text
+          name: post_button_link
+          label: 发帖按钮链接
+          value: "/console/posts/editor"
+
+    # ================================================================ 首页
+    - group: home
+      label: 首页
+      formSchema:
+        - $formkit: text
+          name: tab_primary
+          label: 第一个标签页
+        - $formkit: text
+          name: tab_secondary
+          label: 第二个标签页
+          help: 留空则不显示标签栏（第一个标签页的文字也随之不显示）。不填则跟随站点语言显示「正在关注 / Following」
+        - $formkit: select
+          name: tab_secondary_source
+          label: 第二个标签页取什么内容
+          value: "hot"
+          options:
+            - label: 最多访问
+              value: hot
+            - label: 指定分类
+              value: category
+        - $formkit: categorySelect
+          name: tab_secondary_category
+          label: 指定的分类
+          help: 上一项选「指定分类」时生效
+        - $formkit: select
+          name: compose
+          label: 顶部发帖框
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: compose_placeholder
+          label: 发帖框提示语
+        - $formkit: postSelect
+          name: pinned
+          label: 置顶文章
+          help: 会带着「已置顶」标记出现在时间线最上面。只在最近 200 篇里找，文章被删或太久远就自动不显示
+        - $formkit: select
+          name: media_grid
+          label: 封面图排版
+          value: "on"
+          help: 把文章封面按 X 的媒体卡片样式铺在正文下方
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+
+    # ================================================================ 文章
+    - group: post
+      label: 文章
+      formSchema:
+        - $formkit: select
+          name: actions
+          label: 互动栏
+          value: "on"
+          help: 回复 / 转发 / 喜欢 / 浏览量 / 收藏 / 分享
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: select
+          name: excerpt
+          label: 时间线里的正文
+          value: "both"
+          options:
+            - label: 标题加摘要
+              value: both
+            - label: 只要摘要
+              value: excerpt
+            - label: 只要标题
+              value: title
+        - $formkit: select
+          name: post_nav
+          label: 上一篇 / 下一篇
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: number
+          name: related_count
+          number: "integer"
+          label: 相关文章数量
+          value: 4
+          help: 填 0 则不显示
+        - $formkit: number
+          name: series_count
+          number: "integer"
+          label: 系列最多列几篇
+          value: 30
+          min: 1
+          max: 100
+          help: 把某个分类的自定义模板选成「系列」，它下面的文章就是一个系列；文章页会显示「本系列第几篇」和整个目录
+        - $formkit: number
+          name: media_count
+          number: "integer"
+          label: 媒体页显示数量
+          value: 60
+          min: 1
+          max: 300
+          help: 「媒体」标签页最多铺多少张封面，超出的引到归档页（最多往前翻 500 篇文章找封面）
+        - $formkit: select
+          name: toc
+          label: 文章目录
+          value: "on"
+          help: 目录从正文里的二、三、四级标题自动生成，标题少于两个就不显示
+          options:
+            - label: 只在「长文」模板里显示
+              value: "on"
+            - label: 所有文章都显示
+              value: "all"
+            - label: 不显示
+              value: "off"
+        - $formkit: select
+          name: read_time
+          label: 字数与阅读时长
+          value: "on"
+          help: 中文按每分钟 400 字、英文按每分钟 220 词估算
+          options:
+            - label: 只在「长文」模板里显示
+              value: "on"
+            - label: 所有文章都显示
+              value: "all"
+            - label: 不显示
+              value: "off"
+        - $formkit: select
+          name: copyright
+          label: 版权声明
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: textarea
+          name: copyright_text
+          label: 版权文字
+          rows: 2
+
+    # ================================================================ 打赏
+    - group: tip
+      label: 打赏
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 打赏
+          value: "off"
+          help: 下面至少要配一种收款方式，按钮才会出现
+          options:
+            - label: 关闭
+              value: "off"
+            - label: 开启
+              value: "on"
+        - $formkit: checkbox
+          name: position
+          label: 按钮位置
+          help: 一个都不勾就等于关掉
+          value:
+            - post
+            - profile
+          options:
+            - label: 文章末尾
+              value: post
+            - label: 个人资料页
+              value: profile
+        - $formkit: text
+          name: button_text
+          label: 按钮文字
+          help: 留空则显示「赞赏」
+        - $formkit: text
+          name: title
+          label: 弹窗标题
+          help: 留空则显示「请我喝杯咖啡」
+        - $formkit: textarea
+          name: desc
+          label: 弹窗说明
+          rows: 2
+        - $formkit: attachment
+          name: wechat
+          label: 微信收款码
+          accepts:
+            - image/*
+        - $formkit: attachment
+          name: alipay
+          label: 支付宝收款码
+          accepts:
+            - image/*
+        - $formkit: text
+          name: custom_label
+          label: 第三种收款方式的名称
+          help: 例如 QQ、Buy Me a Coffee；留空则显示「其他」
+        - $formkit: attachment
+          name: custom_qr
+          label: 第三种收款码
+          accepts:
+            - image/*
+        - $formkit: text
+          name: link_text
+          label: 站外收款页文字
+          help: 例如「在爱发电支持我」
+        - $formkit: text
+          name: link_url
+          label: 站外收款页链接
+          help: 爱发电 / Ko-fi / Buy Me a Coffee / PayPal 这类页面的地址
+
+    # ================================================================ 右栏
+    - group: sidebar
+      label: 右栏
+      formSchema:
+        - $formkit: select
+          name: search
+          label: 搜索框
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: search_placeholder
+          label: 搜索框提示语
+        - $formkit: select
+          name: promo
+          label: 订阅卡片
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: promo_title
+          label: 订阅卡标题
+        - $formkit: textarea
+          name: promo_text
+          label: 订阅卡正文
+          rows: 2
+        - $formkit: text
+          name: promo_button
+          label: 订阅卡按钮文字
+        - $formkit: text
+          name: promo_link
+          label: 订阅卡按钮链接
+          value: "/rss.xml"
+        - $formkit: select
+          name: trends
+          label: 趋势卡片
+          value: "tag"
+          options:
+            - label: 按标签
+              value: tag
+            - label: 按分类
+              value: category
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: trends_title
+          label: 趋势卡标题
+        - $formkit: number
+          name: trends_count
+          number: "integer"
+          min: 1
+          max: 20
+          label: 趋势条目数
+          value: 6
+        - $formkit: select
+          name: follow
+          label: 推荐关注卡片
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: follow_title
+          label: 推荐关注标题
+        - $formkit: repeater
+          name: follow_items
+          label: 推荐关注列表
+          value: []
+          children:
+            - $formkit: attachment
+              name: avatar
+              label: 头像
+              accepts:
+                - "image/*"
+            - $formkit: text
+              name: name
+              label: 昵称
+            - $formkit: text
+              name: handle
+              label: 用户名
+            - $formkit: text
+              name: link
+              label: 链接
+        - $formkit: repeater
+          name: footer_links
+          label: 页脚链接
+          value: []
+          children:
+            - $formkit: text
+              name: text
+              label: 文字
+            - $formkit: text
+              name: link
+              label: 链接
+        - $formkit: text
+          name: icp
+          label: ICP 备案号
+          help: 例如 豫ICP备20014910号-5。填了就会出现在页脚并链到工信部备案系统；留空则不显示。在中国大陆境内提供服务的网站这是必须的
+        - $formkit: text
+          name: copyright
+          label: 页脚版权
+          help: 留空则显示「© 年份 站点标题」
+        - $formkit: checkbox
+          name: sticky_widgets
+          label: 跟随滚动的小组件
+          help: 勾选的小组件在页面往下翻时会一直跟在右边（右栏比屏幕高时，翻到底停住、往回翻到顶停住，和 X 一样）；没勾选的排在上面，随页面滚走。搜索框始终吸顶。
+          value:
+            - promo
+            - trends
+            - follow
+            - epic
+            - footer
+          options:
+            - label: 订阅卡片
+              value: promo
+            - label: 趋势卡片
+              value: trends
+            - label: 推荐关注
+              value: follow
+            - label: Epic 限免
+              value: epic
+            - label: 页脚
+              value: footer
+
+    # ================================================================ Epic 限免
+    - group: epic
+      label: Epic 限免
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 右栏「Epic 限免」卡片
+          value: "off"
+          help: 展示 Epic Games Store 本周免费领取的游戏。默认关闭——数据是访客的浏览器直接去下面那个接口取的（Epic 官方接口不允许跨域，主题没有服务端，只能这么拿），要不要让访客连第三方由你决定。拿不到数据时卡片自动不出现。
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: text
+          name: title
+          label: 卡片标题
+        - $formkit: text
+          name: api
+          label: 数据接口
+          help: 推荐填你自己的接口，例如聚合 API 的 https://你的域名/api/epic-free（要带 CORS 头；站点是 https 的话接口也必须是 https）。留空则用内置的公共接口。聚合 API、Epic 官方原始格式、60s / UAPI 三种返回格式都能识别。
+        - $formkit: select
+          name: fallback
+          label: 自己的接口失败时
+          value: "on"
+          help: 只在上面填了接口时有意义。退回公共接口意味着访客的浏览器会直连第三方（uapis.cn、60s 社区实例），介意的话选「不退回」，那样接口挂了卡片就不出现。
+          options:
+            - label: 退回内置的公共接口
+              value: "on"
+            - label: 不退回
+              value: "off"
+        - $formkit: number
+          name: count
+          number: "integer"
+          min: 1
+          max: 12
+          label: 卡片里最多显示几个
+          value: 4
+        - $formkit: select
+          name: upcoming
+          label: 显示「即将限免」
+          value: "on"
+          options:
+            - label: 显示
+              value: "on"
+            - label: 只显示正在限免的
+              value: "off"
+        - $formkit: number
+          name: cache_hours
+          number: "integer"
+          min: 1
+          max: 48
+          label: 本地缓存时长（小时）
+          value: 3
+          help: 访客浏览器里缓存多久再去请求接口。限免一周才换一次，没必要太勤。
+        - $formkit: text
+          name: more_link
+          label: 「显示更多」链接
+          help: 留空则去 Epic 商店的免费游戏页。新建一个独立页面并选用「Epic 限免」模板后，可以把它的地址（例如 /epic）填在这里。
+
+    # ================================================================ 外观
+    - group: style
+      label: 外观
+      formSchema:
+        - $formkit: select
+          name: background
+          label: 默认背景
+          value: "auto"
+          help: 访客可以在「显示」面板里自己改，这里只是初始值
+          options:
+            - label: 跟随系统
+              value: auto
+            - label: 浅色
+              value: light
+            - label: 暗淡
+              value: dim
+            - label: 夜间
+              value: dark
+        - $formkit: select
+          name: accent
+          label: 默认强调色
+          value: "blue"
+          options:
+            - label: 蓝
+              value: blue
+            - label: 黄
+              value: yellow
+            - label: 粉
+              value: pink
+            - label: 紫
+              value: purple
+            - label: 橙
+              value: orange
+            - label: 绿
+              value: green
+        - $formkit: select
+          name: font_size
+          label: 默认字号
+          value: "3"
+          options:
+            - label: 最小
+              value: "1"
+            - label: 小
+              value: "2"
+            - label: 标准
+              value: "3"
+            - label: 大
+              value: "4"
+            - label: 最大
+              value: "5"
+        - $formkit: select
+          name: avatar_shape
+          label: 头像形状
+          value: "circle"
+          options:
+            - label: 圆形
+              value: circle
+            - label: 方形
+              value: square
+        - $formkit: text
+          name: font_family
+          label: 自定义字体
+          help: 例如 "Noto Sans SC", sans-serif。留空则使用系统字体栈（和 X 一样）。字体文件要自己在「代码注入」里引入
+        - $formkit: text
+          name: icon_cdn
+          label: 图标脚本地址
+          value: "https://cdn.jsdelivr.net/npm/iconify-icon@2/dist/iconify-icon.min.js"
+          help: 图标用 iconify 渲染。CDN 打不开会导致图标不显示，介意的话把这个文件下载下来传到附件里，再把地址换成自己的
+        - $formkit: text
+          name: highlight_cdn
+          label: 代码高亮脚本地址
+          value: "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11/highlight.min.js"
+          help: 只在页面里真的有代码块时才加载，同样可以换成自托管地址
+
+    # ================================================================ 功能
+    - group: features
+      label: 功能
+      formSchema:
+        - $formkit: select
+          name: infinite
+          label: 无限滚动
+          value: "on"
+          help: 滚到底部自动加载下一页
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（用分页按钮）
+              value: "off"
+        - $formkit: select
+          name: shortcuts
+          label: 键盘快捷键
+          value: "on"
+          help: 按 ? 可以查看全部快捷键
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: lightbox
+          label: 图片灯箱
+          value: "on"
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: soft_nav
+          label: 无刷新切页
+          value: "on"
+          help: 站内链接不再整页重载，只换中间那一栏，左右两栏原地不动——没有白屏，右栏的滚动位置和搜索框里的字也不会丢。浏览器不支持或者中途出错会自动退回普通跳转
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: alt_badge
+          label: 图片 ALT 徽标
+          value: "on"
+          help: 带描述文字的图片左下角会出现一个 ALT 角标，点一下看描述，和 X 一样
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: bookmarks
+          label: 书签
+          value: "on"
+          help: 收藏记录保存在访客自己的浏览器里
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: relative_time
+          label: 相对时间
+          value: "on"
+          help: 一分钟内「刚刚」，一小时内「N分钟」，一天内「N小时」，一周内「N天」，同一年「9月19日」，更早的带年份（X 的风格，不带「前」字）
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: new_posts
+          label: 新文章提示
+          value: "on"
+          help: 页面开着的时候有新文章，顶部会冒出「显示 N 条新帖」
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: code_copy
+          label: 代码块复制按钮
+          value: "on"
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: code_highlight
+          label: 代码语法高亮
+          value: "on"
+          help: 页面里有代码块时才会去加载高亮脚本，配色跟着主题的三套背景走
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: thumbnails
+          label: 图片缩略图
+          value: "on"
+          help: 列表与网格里的图片走 Halo 的缩略图接口，取不到会自动退回原图
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: restore_scroll
+          label: 记住浏览位置
+          value: "on"
+          help: 无限滚动翻了很多页之后，点进文章再返回能回到原来的地方
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: reading_progress
+          label: 阅读进度条
+          value: "on"
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+
+    # ================================================================ 高级
+    - group: advanced
+      label: 高级
+      formSchema:
+        - $formkit: code
+          name: custom_css
+          label: 自定义 CSS
+          language: css
+          height: 200px
+        - $formkit: code
+          name: custom_js
+          label: 自定义 JavaScript
+          language: javascript
+          height: 200px
+        - $formkit: code
+          name: head_html
+          label: 注入到 head
+          language: html
+          height: 150px
+        - $formkit: code
+          name: footer_html
+          label: 注入到 body 末尾
+          language: html
+          height: 150px

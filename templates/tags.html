@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <th:block
+      th:replace="~{modules/head :: head(title=#{title.tags} + ${site.title}, desc=#{desc.tags}, image=null, canonical=${site.routes.tagsUri}, type='website')}"
+    ></th:block>
+  </head>
+  <body>
+    <a class="x-skip-link" href="#main" th:text="#{a11y.skipToContent}">跳到主内容</a>
+    <div class="x-shell">
+      <th:block th:replace="~{modules/nav :: nav(current='tags')}"></th:block>
+
+      <main class="x-feed" id="main" tabindex="-1">
+        <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
+
+        <header class="x-header">
+          <div class="x-header-bar">
+            <button class="x-header-back" type="button" data-go-back th:aria-label="#{common.back}">
+              <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+            </button>
+            <div>
+              <h1 class="x-header-title" th:text="#{common.tags}">标签</h1>
+              <div class="x-header-sub" th:with="cnt=${#lists.size(tags) ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.tag' : 'unit.tags')}"></div>
+            </div>
+          </div>
+        </header>
+
+        <th:block th:replace="~{modules/profile :: tabs(current='tags')}"></th:block>
+
+        <!--/* 按 X 的趋势榜排版：序号 + 话题 + 篇数，顺序交给 JS 按篇数重排 */-->
+        <div data-trends data-trends-count="999">
+          <a
+            class="x-card-row"
+            style="border-bottom: 1px solid var(--border)"
+            th:each="t, st : ${tags}"
+            th:href="@{${t.status.permalink}}"
+            th:attr="data-trend-count=${t.postCount} ?: 0"
+          >
+            <div class="x-card-row-main">
+              <div class="x-card-row-label">
+                <span data-trend-rank th:text="${st.index + 1}"></span>[[#{label.tag}]]
+              </div>
+              <div class="x-card-row-title" th:text="'#' + ${t.spec.displayName}"></div>
+              <div class="x-card-row-label" th:with="cnt=${t.postCount ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.post' : 'unit.posts')}"></div>
+            </div>
+            <iconify-icon icon="ri:arrow-right-s-line" style="color: var(--text-secondary); font-size: 20px"></iconify-icon>
+          </a>
+        </div>
+
+        <th:block th:if="${#lists.isEmpty(tags)}">
+          <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noTags.title}, text=#{empty.noTags.text})}"></th:block>
+        </th:block>
+      </main>
+
+      <th:block th:replace="~{modules/aside :: aside}"></th:block>
+    </div>
+
+    <th:block th:replace="~{modules/mobile :: tabbar(current='tags')}"></th:block>
+    <th:block th:replace="~{modules/mobile :: drawer(current='tags', root=false)}"></th:block>
+    <th:block th:replace="~{modules/dialogs :: dialogs}"></th:block>
+  </body>
+</html>

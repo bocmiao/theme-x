@@ -1,0 +1,24 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <!--/*
+    分页条同时充当无限滚动的「下一页在哪」：JS 读 data-next-url，把下一页的
+    时间线条目接到当前列表后面，然后把这里的地址换成再下一页。关掉无限滚动
+    时它就是一对普通的上/下页按钮。
+  */-->
+  <nav
+    th:fragment="pagination(list)"
+    class="x-pagination"
+    data-pagination
+    th:if="${list != null and (list.hasPrevious() or list.hasNext())}"
+    th:attr="data-next-url=${list.hasNext()} ? ${list.nextUrl} : null,
+             data-total-pages=${list.totalPages}"
+    th:aria-label="#{a11y.pagination}"
+  >
+    <a class="x-btn x-btn--outline" th:if="${list.hasPrevious()}" th:href="@{${list.prevUrl}}" rel="prev" th:text="#{action.prevPage}">上一页</a>
+    <span th:unless="${list.hasPrevious()}"></span>
+    <!--/* Halo 对超出总页数的地址照样渲染，页码要夹一下，别显示成「5 / 1」 */-->
+    <span th:if="${list.totalPages > 0}" th:text="${(list.page > list.totalPages ? list.totalPages : list.page)} + ' / ' + ${list.totalPages}"></span>
+    <span th:unless="${list.totalPages > 0}"></span>
+    <a class="x-btn x-btn--outline" th:if="${list.hasNext()}" th:href="@{${list.nextUrl}}" rel="next" th:text="#{action.nextPage}">下一页</a>
+    <span th:unless="${list.hasNext()}"></span>
+  </nav>
+</th:block>

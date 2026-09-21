@@ -1,0 +1,244 @@
+<th:block xmlns:th="http://www.thymeleaf.org">
+  <th:block th:fragment="dialogs">
+
+    <!--/* 阅读进度条 */-->
+    <div class="x-progress" data-progress hidden></div>
+
+    <!--/* 无刷新切页时顶上那条细线 */-->
+    <div class="x-navload" data-navload aria-hidden="true"></div>
+
+    <!--/* =========================================== 显示设置 ============= */-->
+    <div class="x-overlay" data-overlay="display" role="dialog" aria-modal="true" th:aria-label="#{common.displaySettings}">
+      <div class="x-modal x-modal--sm">
+        <div class="x-modal-head">
+          <button class="x-header-back" type="button" data-close-overlay th:aria-label="#{common.close}">
+            <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <h2 class="x-modal-title" th:text="#{common.display}">显示</h2>
+        </div>
+        <div class="x-modal-body">
+          <div class="x-modal-lead">
+            <h2 th:text="#{display.title}">自定义你的视图</h2>
+            <p th:text="#{display.hint}">这些设置只影响这台设备上的浏览器，随时可以改回来。</p>
+          </div>
+
+          <div class="x-setting-group">
+            <span class="x-setting-label" th:text="#{display.fontSize}">字体大小</span>
+            <div class="x-font-scale">
+              <small>Aa</small>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value="3"
+                data-font-size
+                th:aria-label="#{display.fontSize}"
+              />
+              <big>Aa</big>
+            </div>
+          </div>
+
+          <div class="x-setting-group">
+            <span class="x-setting-label" th:text="#{display.color}">颜色</span>
+            <div class="x-accent-row">
+              <button
+                th:each="c : ${ {'blue','yellow','pink','purple','orange','green'} }"
+                class="x-accent-dot"
+                type="button"
+                data-accent-option
+                th:attr="data-accent=${c}"
+                th:style="'background:' + ${c == 'blue' ? '#1d9bf0' : (c == 'yellow' ? '#ffd400' : (c == 'pink' ? '#f91880' : (c == 'purple' ? '#7856ff' : (c == 'orange' ? '#ff7a00' : '#00ba7c'))))}"
+                th:aria-label="${#messages.msg('display.accentColor') + #messages.msg('color.' + c)}"
+              >
+                <iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="x-setting-group">
+            <span class="x-setting-label" th:text="#{display.background}">背景</span>
+            <div class="x-bg-row">
+              <button class="x-bg-option" type="button" data-bg-option data-bg="light">
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.light}]]
+              </button>
+              <button class="x-bg-option" type="button" data-bg-option data-bg="dim">
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.dim}]]
+              </button>
+              <button class="x-bg-option" type="button" data-bg-option data-bg="dark">
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.dark}]]
+              </button>
+            </div>
+          </div>
+
+          <div class="x-setting-group" style="margin-bottom: 0">
+            <span class="x-setting-label" th:text="#{display.avatarShape}">头像形状</span>
+            <div class="x-bg-row" style="background: var(--bg-subtle)">
+              <button
+                class="x-bg-option"
+                type="button"
+                data-avatar-option
+                data-avatar="circle"
+                style="background: transparent; color: var(--text)"
+              >
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.circle}]]
+              </button>
+              <button
+                class="x-bg-option"
+                type="button"
+                data-avatar-option
+                data-avatar="square"
+                style="background: transparent; color: var(--text)"
+              >
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.square}]]
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--/* =========================================== 快捷键 =============== */-->
+    <div
+      class="x-overlay"
+      data-overlay="shortcuts"
+      role="dialog"
+      aria-modal="true"
+      th:aria-label="#{shortcut.title}"
+      th:if="${theme.config.features?.shortcuts != 'off'}"
+    >
+      <div class="x-modal">
+        <div class="x-modal-head">
+          <button class="x-header-back" type="button" data-close-overlay th:aria-label="#{common.close}">
+            <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <h2 class="x-modal-title" th:text="#{shortcut.title}">键盘快捷键</h2>
+        </div>
+        <div class="x-modal-body">
+          <div class="x-shortcut-grid">
+            <div class="x-shortcut-col">
+              <h3 th:text="#{a11y.nav}">导航</h3>
+              <div class="x-shortcut-item"><b th:text="#{common.home}">首页</b><span><kbd>g</kbd> <kbd>h</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.explore}">探索</b><span><kbd>g</kbd> <kbd>e</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.categories}">分类</b><span><kbd>g</kbd> <kbd>c</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.tags}">标签</b><span><kbd>g</kbd> <kbd>t</kbd></span></div>
+              <div class="x-shortcut-item" th:if="${theme.config.features?.bookmarks != 'off'}"><b th:text="#{common.bookmarks}">书签</b><span><kbd>g</kbd> <kbd>b</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.profile}">个人资料</b><span><kbd>g</kbd> <kbd>p</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.backToTop}">回到顶部</b><span><kbd>.</kbd></span></div>
+            </div>
+            <div class="x-shortcut-col">
+              <h3 th:text="#{a11y.actions}">操作</h3>
+              <div class="x-shortcut-item"><b th:text="#{shortcut.nextItem}">下一条</b><span><kbd>j</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{shortcut.prevItem}">上一条</b><span><kbd>k</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{shortcut.openItem}">打开选中的帖子</b><span><kbd>Enter</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{action.like}">喜欢</b><span><kbd>l</kbd></span></div>
+              <div class="x-shortcut-item" th:if="${theme.config.features?.bookmarks != 'off'}"><b th:text="#{action.bookmark}">收藏</b><span><kbd>b</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.search}">搜索</b><span><kbd>/</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{common.displaySettings}">显示设置</b><span><kbd>g</kbd> <kbd>d</kbd></span></div>
+              <div class="x-shortcut-item"><b th:text="#{shortcut.thisList}">这份列表</b><span><kbd>?</kbd></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--/* =========================================== 搜索结果 ============= */-->
+    <!--/* 建议列表只给 8 条，点「查看全部」或直接回车落到这里 */-->
+    <div
+      class="x-overlay"
+      data-overlay="search"
+      role="dialog"
+      aria-modal="true"
+      th:aria-label="#{search.results}"
+      th:if="${theme.config.sidebar?.search != 'off'}"
+    >
+      <div class="x-modal">
+        <div class="x-modal-head">
+          <button class="x-header-back" type="button" data-close-overlay th:aria-label="#{common.close}">
+            <iconify-icon icon="ri:arrow-left-line" aria-hidden="true"></iconify-icon>
+          </button>
+          <div>
+            <h2 class="x-modal-title" th:text="#{search.results}">搜索结果</h2>
+            <div class="x-header-sub" data-search-query></div>
+          </div>
+        </div>
+        <div class="x-modal-body x-modal-body--flush">
+          <div class="x-search-results" data-search-results></div>
+        </div>
+      </div>
+    </div>
+
+    <!--/* =========================================== 打赏 ================= */-->
+    <th:block th:replace="~{modules/tip :: tipDialog}"></th:block>
+
+    <!--/* =========================================== 左栏「更多」========= */-->
+    <div class="x-menu x-nav-menu" data-nav-menu role="menu">
+      <button class="x-menu-item" type="button" role="menuitem" data-nav-act="display">
+        <iconify-icon icon="ri:palette-line" aria-hidden="true"></iconify-icon>
+        <span th:text="#{common.display}">显示</span>
+      </button>
+      <button
+        class="x-menu-item"
+        type="button"
+        role="menuitem"
+        data-nav-act="shortcuts"
+        th:if="${theme.config.features?.shortcuts != 'off'}"
+      >
+        <iconify-icon icon="ri:keyboard-box-line" aria-hidden="true"></iconify-icon>
+        <span th:text="#{shortcut.title}">键盘快捷键</span>
+      </button>
+      <a class="x-menu-item" role="menuitem" href="/rss.xml">
+        <iconify-icon icon="ri:rss-line" aria-hidden="true"></iconify-icon>
+        <span th:text="#{common.rssSubscribe}">RSS 订阅</span>
+      </a>
+      <a class="x-menu-item" role="menuitem" th:href="@{/console}">
+        <iconify-icon icon="ri:settings-3-line" aria-hidden="true"></iconify-icon>
+        <span th:text="#{common.admin}">后台管理</span>
+      </a>
+    </div>
+
+    <!--/* =========================================== 分享菜单 ============= */-->
+    <div class="x-menu" data-share-menu role="menu"></div>
+
+    <!--/* =========================================== 灯箱 ================= */-->
+    <div class="x-lightbox" data-lightbox-root role="dialog" aria-modal="true" th:aria-label="#{a11y.lightbox}">
+      <button class="x-lightbox-close" type="button" data-lightbox-close th:aria-label="#{common.close}">
+        <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+      </button>
+      <button class="x-lightbox-prev" type="button" data-lightbox-prev th:aria-label="#{a11y.prevImage}">
+        <iconify-icon icon="ri:arrow-left-s-line" aria-hidden="true"></iconify-icon>
+      </button>
+      <img data-lightbox-img src="" alt="" />
+      <button class="x-lightbox-next" type="button" data-lightbox-next th:aria-label="#{a11y.nextImage}">
+        <iconify-icon icon="ri:arrow-right-s-line" aria-hidden="true"></iconify-icon>
+      </button>
+      <span class="x-lightbox-counter" data-lightbox-counter></span>
+      <div class="x-lightbox-alt" data-lightbox-alt hidden></div>
+    </div>
+
+    <!--/* =========================================== Toast =============== */-->
+    <div class="x-toast" data-toast role="status" aria-live="polite"></div>
+
+    <!--/* 右栏 ≥1050px 才出现，窄屏没有页脚，备案号在这里单独补一条 */-->
+    <div class="x-icp" th:if="${not #strings.isEmpty(theme.config.sidebar?.icp)}">
+      <a
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener"
+        th:text="${#strings.trim(theme.config.sidebar.icp)}"
+      ></a>
+    </div>
+
+    <th:block
+      th:if="${not #strings.isEmpty(theme.config.advanced?.footer_html)}"
+      th:utext="${theme.config.advanced.footer_html}"
+    ></th:block>
+
+    <script th:if="${not #strings.isEmpty(theme.config.advanced?.custom_js)}" th:utext="${theme.config.advanced.custom_js}"></script>
+  </th:block>
+</th:block>
