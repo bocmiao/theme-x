@@ -8,7 +8,24 @@
 
 > `theme.yaml` 的 `spec.author.name` 不能留空——Halo 会校验这个字段，空字符串直接安装失败。
 
-## 安装
+## 安装与升级
+
+**最省事的办法：远程下载。** 后台「外观 → 主题 → 安装主题 → 远程下载」，下载地址填：
+
+```
+https://codeload.github.com/bocmiao/theme-x/zip/refs/heads/main
+```
+
+这个地址永远指向最新版。没装过就是安装；已经装过的话 Halo 会弹「主题已存在，是否升级？」，
+点确认就升级到最新，**主题设置会保留**。以后每次升级都是粘同一个地址、点两下。
+
+> 用 `codeload.github.com` 而不是 `github.com/…/archive/…`：后者只是一个跳转，
+> 国内服务器经常连不上 `github.com` 本身（实测 Halo 会报 `Failed to unzip theme`，
+> 日志里是 `Connection timed out: github.com:443`），而 `codeload` 上才是真正的文件。
+> 如果你的服务器连 `codeload` 也连不上，就只能手动上传 zip 了。
+
+**手动上传**：把仓库打成 zip（`theme.yaml` 要在压缩包根目录，或者整个包只套一层目录也行，
+Halo 会自己识别），后台「安装主题 → 本地上传」。
 
 把整个目录打包成 zip 上传，或者用官方 CLI：
 
