@@ -4,5 +4,5 @@
 .gitattributes export-ignore
 
 # 更新助手插件的源码只放仓库里，不进主题包（编好的 jar 在 templates/assets/updater/ 里随主题分发）
-updater/       export-ignore
+/updater       export-ignore
 CHANGELOG.md   -export-ignore
