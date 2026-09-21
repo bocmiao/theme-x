@@ -3184,10 +3184,17 @@
       if (push) saveScroll(); // 记下要离开这一页时滚到哪儿了
       busy(true);
 
-      fetch(url, { credentials: "same-origin", headers: { "X-Soft-Nav": "1" } })
+      // Accept 要照浏览器那样写：Halo 的错误页按 Accept 协商格式，
+      // fetch 默认的 */* 拿到的是 application/problem+json，而不是主题渲染的 404 页
+      fetch(url, {
+        credentials: "same-origin",
+        headers: { "X-Soft-Nav": "1", Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8" }
+      })
         .then(function (res) {
           var type = res.headers.get("content-type") || "";
-          if (!res.ok || type.indexOf("text/html") < 0) throw new Error("not html");
+          // 404 也照常换：站长没建书签页时 /bookmarks 就是 404 模板兜底出来的，页面完全能用。
+          // 后面还会检查有没有 main.x-feed，确认真是主题渲染的页面。5xx / 403 仍交给浏览器。
+          if ((!res.ok && res.status !== 404) || type.indexOf("text/html") < 0) throw new Error("not html");
           var landed = new URL(res.url, location.href);
           if (landed.origin !== location.origin) throw new Error("cross origin");
           return res.text().then(function (html) {

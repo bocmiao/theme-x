@@ -39,6 +39,8 @@
           th:if="${theme.config.features?.bookmarks != 'off'}"
           th:attr="data-title=#{common.bookmarks}"
         >
+          <!--/* 和真正的书签页一样带上那排标签；不在 /bookmarks 时整个兜底容器会被删掉，这排也跟着走 */-->
+          <th:block th:replace="~{modules/profile :: tabs(current='bookmarks')}"></th:block>
           <div data-bookmarks-list></div>
           <div class="x-empty" data-bookmarks-empty hidden>
             <h2 th:text="#{empty.bookmarks.title}">把帖子存起来以后再看</h2>
