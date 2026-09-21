@@ -1,0 +1,16 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-theme-x-updater-check
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    # 能管理主题的角色自动带上「查最新版本」这一条，不用单独授权
+    rbac.authorization.halo.run/aggregate-to-role-template-manage-themes: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Themes Management"
+    rbac.authorization.halo.run/display-name: "检查 theme-x 更新"
+rules:
+  - apiGroups: ["console.api.themexupdater.halo.run"]
+    resources: ["themes/latest"]
+    verbs: ["get"]

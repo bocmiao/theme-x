@@ -1,0 +1,18 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  name: theme-x-updater
+spec:
+  enabled: true
+  requires: ">=2.20.0"
+  author:
+    name: Miao
+    website: https://github.com/bocmiao
+  logo: logo.svg
+  homepage: https://github.com/bocmiao/theme-x
+  repo: https://github.com/bocmiao/theme-x
+  displayName: "theme-x 更新助手"
+  description: "在后台检查 theme-x 主题有没有新版本；有的话，主题列表里会出现「更新到 x.y.z」按钮，点一下就升级，主题设置保留。"
+  license:
+    - name: MIT
+  version: 1.0.0

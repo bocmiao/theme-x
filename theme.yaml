@@ -6,6 +6,10 @@ spec:
   displayName: X
   author:
     name: "Miao"
+    website: https://github.com/bocmiao
+  homepage: https://github.com/bocmiao/theme-x
+  repo: https://github.com/bocmiao/theme-x
+  issues: https://github.com/bocmiao/theme-x/issues
   description: 把博客变成 X（原 Twitter）。左栏导航、中间 600px 时间线、右栏搜索与趋势，三套背景配六种强调色，无限滚动、键盘快捷键、图片灯箱一并还原。
   logo: /themes/theme-x/assets/images/logo.svg
   version: 1.13.5
