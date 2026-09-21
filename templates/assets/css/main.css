@@ -1099,8 +1099,9 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
 .x-action-count { padding: 0 4px 0 0; min-width: 1em; }
 .x-action-count:empty { min-width: 0; padding: 0; }
 .x-action { min-width: 0; }
-/* 书签和分享挨着放在最右边（X 的排法），但两个圆形点击区不能直接贴在一起 */
-.x-action-group { display: flex; align-items: center; gap: 12px; }
+/* 书签和分享原先按 X 的排法挤在最右边，看着太近；display: contents 让它俩
+   直接参与外层的 space-between，和前面四个按钮一样等距排开 */
+.x-action-group { display: contents; }
 .x-action:hover { text-decoration: none; }
 .x-action:hover .x-action-icon { background: color-mix(in srgb, currentColor 10%, transparent); }
 
@@ -2440,7 +2441,6 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
   .x-toast { bottom: calc(53px + 16px + env(safe-area-inset-bottom)); }
   .x-action-icon { width: 30px; height: 30px; font-size: 17px; }
   .x-action { font-size: 0.8rem; }
-  .x-action-group { gap: 8px; }
 
   /* 往下翻的时候把上下两条栏收起来，往上一拨再出来（html.is-chrome-hidden 由 theme.js 切） */
   .x-mobile-top,
