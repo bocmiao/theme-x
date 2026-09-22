@@ -14,7 +14,7 @@
       return v !== "off" && v !== false;
     };
     var out = {};
-    ["infinite", "shortcuts", "lightbox", "bookmarks", "relativeTime", "newPosts", "codeCopy", "progress", "codeHighlight", "restoreScroll", "altBadge", "softNav"].forEach(
+    ["infinite", "shortcuts", "lightbox", "bookmarks", "relativeTime", "newPosts", "codeCopy", "progress", "codeHighlight", "restoreScroll", "altBadge", "softNav", "hideBars"].forEach(
       function (k) {
         out[k] = isOn(raw[k]);
       }
@@ -2845,7 +2845,7 @@
   // 手机上顶栏 + 底栏固定占掉一百多像素，往下读的时候让出来，往上一拨再回来。
   // 不走 rAF：页面在后台标签里时 rAF 不触发，而这里只是切一个 class，够轻。
   function initChromeAutoHide() {
-    if (!window.matchMedia) return;
+    if (!window.matchMedia || !CFG.hideBars) return;
     var mq = window.matchMedia("(max-width: 499px)");
     var lastY = Math.max(0, window.pageYOffset || 0);
 
@@ -2872,10 +2872,39 @@
           lastY = y;
           return setHidden(false);
         }
-        if (Math.abs(dy) < 8) return; // 攒够一小段再判断方向，免得手指抖动来回闪
+        // 往上 4px 就放出来，往下攒够 10px 才收：出来要快，收起可以慢一点，也免得手指抖动来回闪
+        if (dy > -4 && dy < 10) return;
         lastY = y;
         if (dy > 0 && busy()) return;
         setHidden(dy > 0);
+      },
+      { passive: true }
+    );
+
+    // 手指往下拖就立刻放出来，不等页面真的滚动。手机 Chrome 往下拖时先要把它自己的地址栏
+    // 拉出来，这一段页面根本不滚、没有 scroll 事件；页面太短滚不动时也一样。栏迟迟不出来，
+    // 人就会一直往下拽，最后拽出浏览器的下拉刷新
+    var touchY = null;
+    on(
+      document,
+      "touchstart",
+      function (e) {
+        touchY = e.touches.length === 1 ? e.touches[0].clientY : null;
+      },
+      { passive: true }
+    );
+    on(
+      document,
+      "touchmove",
+      function (e) {
+        if (touchY === null || e.touches.length !== 1) return;
+        var fy = e.touches[0].clientY;
+        if (fy - touchY > 12) {
+          touchY = null;
+          if (mq.matches) setHidden(false);
+        } else if (fy < touchY) {
+          touchY = fy; // 往上推时起点跟着走，换成往下拖马上就能反应
+        }
       },
       { passive: true }
     );
@@ -3214,6 +3243,11 @@
             }
             swap(doc);
             window.scrollTo(0, y || 0);
+            // 新页面从顶上开始时，收起的栏要回来（新页面短到滚不动的话不会有 scroll 事件替它做这事）
+            if (!y && root.classList.contains("is-chrome-hidden")) {
+              root.classList.remove("is-chrome-hidden");
+              syncStickyOffset();
+            }
           }
 
           busy(false);

@@ -679,6 +679,26 @@ spec:
             - label: 关闭
               value: "off"
         - $formkit: select
+          name: hide_bars
+          label: 手机上滚动时收起顶栏和底栏
+          value: "on"
+          help: 往下读时两条栏让出位置，手指往下一拨就回来，和 X 一样。关掉则两条栏一直固定显示
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（一直显示）
+              value: "off"
+        - $formkit: select
+          name: pull_refresh
+          label: 手机浏览器下拉刷新
+          value: "off"
+          help: 默认拦掉：在页面顶上往下拉不会整页刷新，免得想拉出顶栏时误触。想保留浏览器自带的下拉刷新就选「保留」
+          options:
+            - label: 拦掉（推荐）
+              value: "off"
+            - label: 保留
+              value: "on"
+        - $formkit: select
           name: alt_badge
           label: 图片 ALT 徽标
           value: "on"

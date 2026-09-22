@@ -5,6 +5,9 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <title th:text="${title ?: (site.title)}"></title>
+    <!--/* 手机浏览器的下拉刷新默认拦掉：顶栏收起后往下拉很容易误触整页刷新，软导航攒下的状态全丢。
+         contain 只拦刷新，iOS 的回弹、安卓的边缘光效照旧 */-->
+    <style th:if="${theme.config.features?.pull_refresh != 'on'}">html, body { overscroll-behavior-y: contain; }</style>
 
     <!--/* permalink 给的是相对路径，拼成绝对地址再当 canonical 用 */-->
     <th:block
@@ -138,6 +141,7 @@
         lightbox: /*[[${ft?.lightbox}]]*/ "on",
         altBadge: /*[[${ft?.alt_badge}]]*/ "on",
         softNav: /*[[${ft?.soft_nav}]]*/ "on",
+        hideBars: /*[[${ft?.hide_bars}]]*/ "on",
         bookmarks: /*[[${ft?.bookmarks}]]*/ "on",
         relativeTime: /*[[${ft?.relative_time}]]*/ "on",
         newPosts: /*[[${ft?.new_posts}]]*/ "on",
