@@ -49,6 +49,103 @@
         <th:block th:if="${#lists.isEmpty(links) and (groups == null or #lists.isEmpty(groups))}">
           <th:block th:replace="~{modules/tweet :: empty(title=#{empty.noLinks.title}, text=#{empty.noLinks.text})}"></th:block>
         </th:block>
+
+        <!--/* 申请友链：上面是站长自己的信息（方便对方照抄），下面是表单。
+             表单提交走「链接」插件的公开接口，插件没开放自助申请时会给一句说明。 */-->
+        <th:block
+          th:if="${theme.config.links?.apply != 'off'}"
+          th:with="lk=${theme.config.links},
+                   myName=${#strings.isEmpty(lk?.my_name) ? site.title : lk.my_name},
+                   myUrl=${#strings.isEmpty(lk?.my_url) ? site.url : lk.my_url},
+                   myLogo=${#strings.isEmpty(lk?.my_logo) ? (theme.config.profile?.avatar ?: site.logo) : lk.my_logo},
+                   myDesc=${#strings.isEmpty(lk?.my_desc) ? site.subtitle : lk.my_desc}"
+        >
+          <section class="x-apply" id="apply" data-link-apply>
+            <h2 class="x-section-head"><span th:text="#{links.applyTitle}">申请友链</span></h2>
+
+            <div class="x-apply-body">
+              <p class="x-apply-lead" th:text="#{links.applyLead}">想交换友链的话，先把我加上，再把你的信息填在下面。</p>
+
+              <dl class="x-apply-mine">
+                <div>
+                  <dt th:text="#{links.name}">名称</dt>
+                  <dd><span th:text="${myName}"></span></dd>
+                </div>
+                <div>
+                  <dt th:text="#{links.url}">地址</dt>
+                  <dd><span th:text="${myUrl}"></span></dd>
+                </div>
+                <div th:if="${not #strings.isEmpty(myLogo)}">
+                  <dt th:text="#{links.logo}">头像</dt>
+                  <dd><span th:text="${myLogo}"></span></dd>
+                </div>
+                <div th:if="${not #strings.isEmpty(myDesc)}">
+                  <dt th:text="#{links.desc}">描述</dt>
+                  <dd><span th:text="${myDesc}"></span></dd>
+                </div>
+              </dl>
+
+              <div class="x-apply-acts">
+                <button
+                  class="x-btn"
+                  type="button"
+                  data-apply-copy
+                  th:attr="data-copy=${myName + '&#10;' + myUrl + (#strings.isEmpty(myLogo) ? '' : '&#10;' + myLogo) + (#strings.isEmpty(myDesc) ? '' : '&#10;' + myDesc)}"
+                  th:text="#{links.copyAll}"
+                >
+                  复制我的信息
+                </button>
+                <button class="x-btn x-btn--accent" type="button" data-apply-open th:text="#{links.applyOpen}">填写申请</button>
+              </div>
+
+              <p class="x-apply-note" th:text="${#strings.isEmpty(lk?.apply_note) ? #messages.msg('links.applyNote') : lk.apply_note}"></p>
+
+              <form class="x-apply-form" data-apply-form hidden>
+                <div class="x-field">
+                  <label for="ap-name" th:text="#{links.name}">名称</label>
+                  <input id="ap-name" name="displayName" type="text" required maxlength="60" autocomplete="off" />
+                </div>
+                <div class="x-field">
+                  <label for="ap-url" th:text="#{links.url}">地址</label>
+                  <input id="ap-url" name="url" type="url" required placeholder="https://" autocomplete="url" />
+                </div>
+                <div class="x-field">
+                  <label for="ap-logo" th:text="#{links.logo}">头像</label>
+                  <input id="ap-logo" name="logo" type="url" placeholder="https://" autocomplete="off" />
+                </div>
+                <div class="x-field">
+                  <label for="ap-desc" th:text="#{links.desc}">描述</label>
+                  <input id="ap-desc" name="description" type="text" maxlength="120" autocomplete="off" />
+                </div>
+                <div class="x-field">
+                  <label for="ap-rss" th:text="#{links.rss}">RSS</label>
+                  <input id="ap-rss" name="feedUrl" type="url" placeholder="https://" autocomplete="off" />
+                  <span class="x-field-help" th:text="#{links.rssHelp}">填了的话，你的新文章会出现在我首页的「正在关注」里</span>
+                </div>
+                <div class="x-field">
+                  <label for="ap-email" th:text="#{links.email}">邮箱</label>
+                  <input id="ap-email" name="email" type="email" autocomplete="email" />
+                  <span class="x-field-help" th:text="#{links.emailHelp}">只用来通知审核结果，不公开</span>
+                </div>
+                <div class="x-field x-field--captcha">
+                  <label for="ap-code" th:text="#{links.captcha}">验证码</label>
+                  <div class="x-captcha">
+                    <input id="ap-code" name="captchaCode" type="text" required maxlength="8" autocomplete="off" inputmode="latin" />
+                    <button type="button" data-captcha-refresh th:title="#{links.captchaRefresh}" th:aria-label="#{links.captchaRefresh}">
+                      <img alt="" data-captcha-image />
+                      <iconify-icon icon="ri:refresh-line" aria-hidden="true"></iconify-icon>
+                    </button>
+                  </div>
+                </div>
+                <p class="x-apply-msg" data-apply-msg hidden></p>
+                <div class="x-apply-acts">
+                  <button class="x-btn x-btn--accent" type="submit" data-apply-submit th:text="#{links.applySubmit}">提交申请</button>
+                  <button class="x-btn" type="button" data-apply-cancel th:text="#{common.cancel}">取消</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </th:block>
       </main>
 
       <th:block th:replace="~{modules/aside :: aside}"></th:block>

@@ -704,6 +704,59 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
   overflow: hidden;
 }
 
+/* --------------------------------------------------------- 申请友链 */
+.x-apply { border-top: 1px solid var(--border); }
+.x-apply-body { padding: 4px 16px 24px; }
+.x-apply-lead { margin: 0 0 12px; color: var(--text-secondary); font-size: 0.933rem; line-height: 1.6; }
+.x-apply-mine {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--hover);
+  font-size: 0.933rem;
+}
+.x-apply-mine > div { display: flex; gap: 10px; padding: 3px 0; }
+.x-apply-mine dt { flex: 0 0 52px; color: var(--text-secondary); }
+.x-apply-mine dd { margin: 0; min-width: 0; word-break: break-all; }
+.x-apply-acts { display: flex; flex-wrap: wrap; gap: 10px; }
+.x-apply-note { margin: 14px 0 0; color: var(--text-secondary); font-size: 0.866rem; line-height: 1.7; white-space: pre-wrap; }
+.x-apply-form { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+.x-field { display: flex; flex-direction: column; gap: 4px; }
+.x-field label { color: var(--text-secondary); font-size: 0.866rem; }
+.x-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.933rem;
+}
+.x-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.x-field-help { color: var(--text-secondary); font-size: 0.8rem; }
+.x-captcha { display: flex; align-items: center; gap: 10px; }
+.x-captcha input { flex: 1; min-width: 0; }
+.x-captcha button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.x-captcha img { height: 30px; border-radius: 4px; }
+.x-captcha img:not([src]) { display: none; }
+.x-apply-msg { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+.x-apply-msg[data-kind="error"] { color: var(--like); }
+.x-apply-msg[data-kind="ok"] { color: var(--repost); }
+.x-apply-msg[data-kind="info"] { color: var(--text-secondary); }
+
 .x-footer-links {
   display: flex;
   flex-wrap: wrap;

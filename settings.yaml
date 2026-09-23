@@ -368,6 +368,42 @@ spec:
           label: 站外收款页链接
           help: 爱发电 / Ko-fi / Buy Me a Coffee / PayPal 这类页面的地址
 
+    # ================================================================ 友链页
+    - group: links
+      label: 友链页
+      formSchema:
+        - $formkit: select
+          name: apply
+          label: 友链申请入口
+          value: "on"
+          help: 在友链页底部显示「我的友链信息」和申请表单。表单走「链接」插件的申请接口，需要在插件设置的「友链申请」里打开「启用友链申请」和「允许访客提交」；没开的话访客点开会看到一句说明，你的信息照常显示
+          options:
+            - label: 显示
+              value: "on"
+            - label: 不显示
+              value: "off"
+        - $formkit: text
+          name: my_name
+          label: 我的站点名称
+          help: 留空则用站点标题
+        - $formkit: text
+          name: my_url
+          label: 我的站点地址
+          help: 留空则用站点地址
+        - $formkit: attachment
+          name: my_logo
+          label: 我的头像 / Logo
+          help: 留空则用「个人资料 → 头像」
+        - $formkit: text
+          name: my_desc
+          label: 我的一句话描述
+          help: 留空则用站点副标题
+        - $formkit: textarea
+          name: apply_note
+          label: 申请须知
+          rows: 4
+          help: 显示在申请表单上方。留空则用一段默认文案（先加本站、内容健康、长期有效）
+
     # ================================================================ 右栏
     - group: sidebar
       label: 右栏

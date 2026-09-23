@@ -476,6 +476,163 @@
     });
   }
 
+  /* ----------------------------------------------------------- 申请友链 */
+  /* 友链页底部那块。表单走「链接」插件的公开接口：
+     先要一张图形验证码（POST .../link-applications/captcha），连同表单一起提交。
+     插件没装、或者没开「启用友链申请 / 允许访客提交」时接口是 404/403，
+     这里就收起表单、给访客一句说明，站长自己的信息照常显示。 */
+  function initLinkApply() {
+    var box = $("[data-link-apply]");
+    if (!box) return;
+    var form = $("[data-apply-form]", box);
+    var openBtn = $("[data-apply-open]", box);
+    var cancelBtn = $("[data-apply-cancel]", box);
+    var msg = $("[data-apply-msg]", box);
+    var image = $("[data-captcha-image]", box);
+    var refreshBtn = $("[data-captcha-refresh]", box);
+    var submitBtn = $("[data-apply-submit]", box);
+    var API = "/apis/api.link.halo.run/v1alpha1/link-applications";
+    var challenge = "";
+    var busy = false;
+
+    function say(text, kind) {
+      if (!msg) return;
+      msg.textContent = text || "";
+      msg.hidden = !text;
+      msg.setAttribute("data-kind", kind || "info");
+    }
+
+    function post(url, body) {
+      return fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body || {})
+      }).then(function (res) {
+        return res
+          .json()
+          .catch(function () {
+            return null;
+          })
+          .then(function (data) {
+            if (res.ok) return data;
+            var err = new Error((data && (data.detail || data.title)) || res.status);
+            err.status = res.status;
+            throw err;
+          });
+      });
+    }
+
+    function loadCaptcha() {
+      challenge = "";
+      if (image) image.removeAttribute("src");
+      return post(API + "/captcha", {})
+        .then(function (data) {
+          challenge = (data && data.challengeId) || "";
+          if (image && data && data.image) {
+            // 插件给的是 data:image/...;base64,... 或者裸 base64
+            image.src = /^data:/.test(data.image) ? data.image : "data:image/png;base64," + data.image;
+          }
+          return true;
+        })
+        ["catch"](function (e) {
+          if (e && (e.status === 404 || e.status === 403)) {
+            if (form) form.hidden = true;
+            if (openBtn) openBtn.hidden = true;
+            say(t("js.applyOff", "我暂时没有开放自助申请，可以在任意一篇文章下留言找我。"), "info");
+          } else {
+            say(t("js.captchaFail", "验证码没加载出来，点一下换一张。"), "error");
+          }
+          return false;
+        });
+    }
+
+    on(openBtn, "click", function () {
+      if (!form) return;
+      form.hidden = false;
+      openBtn.hidden = true;
+      say("");
+      loadCaptcha().then(function (ok) {
+        if (ok) {
+          var first = $("input", form);
+          if (first) first.focus();
+        }
+      });
+    });
+
+    on(cancelBtn, "click", function () {
+      if (!form) return;
+      form.hidden = true;
+      if (openBtn) openBtn.hidden = false;
+      say("");
+    });
+
+    on(refreshBtn, "click", function () {
+      say("");
+      loadCaptcha();
+    });
+
+    // 复制站长自己的信息
+    on(box, "click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-copy]") : null;
+      if (!btn) return;
+      copyText(btn.getAttribute("data-copy") || "").then(
+        function () {
+          toast(t("js.infoCopied", "我的信息已复制"));
+        },
+        function () {
+          toast(t("js.copyFailed", "复制失败"));
+        }
+      );
+    });
+
+    on(form, "submit", function (e) {
+      e.preventDefault();
+      if (busy) return;
+      var get = function (name) {
+        var el = form.querySelector('[name="' + name + '"]');
+        return el ? el.value.trim() : "";
+      };
+      var feed = get("feedUrl");
+      var body = {
+        displayName: get("displayName"),
+        url: get("url"),
+        logo: get("logo"),
+        description: get("description"),
+        email: get("email"),
+        feedUrls: feed ? [feed] : [],
+        challengeId: challenge,
+        captchaCode: get("captchaCode")
+      };
+      if (!body.displayName || !body.url) return;
+      busy = true;
+      if (submitBtn) submitBtn.disabled = true;
+      say(t("js.applyBusy", "提交中…"), "info");
+
+      post(API, body)
+        .then(function () {
+          form.hidden = true;
+          if (openBtn) openBtn.hidden = true;
+          say(t("js.applyOk", "已提交，等我审核通过就会出现在友链列表里。"), "ok");
+          form.reset();
+        })
+        ["catch"](function (err) {
+          var text =
+            err.status === 429
+              ? t("js.applyTooMany", "提交太频繁了，过一会儿再来。")
+              : err.status === 404 || err.status === 403
+                ? t("js.applyOff", "我暂时没有开放自助申请，可以在任意一篇文章下留言找我。")
+                : err.message || t("js.applyFail", "提交失败，稍后再试试。");
+          say(text, "error");
+          if (err.status !== 404 && err.status !== 403) loadCaptcha(); // 验证码一次性，失败要换新的
+        })
+        .then(function () {
+          busy = false;
+          if (submitBtn) submitBtn.disabled = false;
+        });
+    });
+  }
+
   /* ------------------------------------------------- 摘要里的网址变成链接 */
   /* 列表里的摘要是纯文本（Halo 生成摘要时把标签都剥掉了），网址就成了不可点的黑字。
      X 上这种链接是蓝色可点的，这里按同样的做法处理。瞬间那种本身就是 HTML（.x-prose），不碰。 */
@@ -3624,6 +3781,7 @@
     initNewPosts,
     initEpic,
     initTip,
+    initLinkApply,
     initBookmarksFallback,
     renderBookmarksPage
   ];
