@@ -679,7 +679,30 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
 
 /* 首页第二个标签页选「友链」时：动态是推文样式的卡片，没有动态就退回这种一行一个站点 */
 .x-timeline > .x-follow-row { border-bottom: 1px solid var(--border); }
+/* 友链动态：一条一条都是别人的长文章，标题和摘要都要收住，不然整屏糊成一片 */
+.x-tweet--friend { padding: 14px 16px; }
 .x-tweet--friend .x-tweet-time { color: var(--text-secondary); }
+.x-tweet--friend .x-tweet-head { margin-bottom: 2px; }
+.x-tweet--friend .x-tweet-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.x-tweet--friend .x-tweet-text {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.933rem;
+  line-height: 1.5;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 .x-footer-links {
   display: flex;

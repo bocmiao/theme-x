@@ -1608,6 +1608,19 @@
       s = String(s || "").replace(/\s+/g, " ").trim();
       return s.length > n ? s.slice(0, n) + "…" : s;
     }
+    // 别人的 RSS 摘要里常混着 Markdown（**加粗**、[标题](链接)、# 号、`代码`），
+    // 直接显示就是一堆符号。这里只留文字。
+    function plain(s) {
+      return String(s || "")
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
+        .replace(/`+([^`]*)`+/g, "$1")
+        .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+        .replace(/^\s{0,3}>\s?/gm, "")
+        .replace(/&nbsp;/g, " ");
+    }
 
     function feedCard(it) {
       var url = safeUrl(it.url);
@@ -1637,7 +1650,7 @@
         '<h2 class="x-tweet-title"><a href="' + escapeHtml(url) + '"' + open + ">" +
         escapeHtml(it.title || t("js.untitled", "无标题")) +
         "</a></h2>" +
-        (it.summary ? '<p class="x-tweet-text">' + escapeHtml(clamp(it.summary, 160)) + "</p>" : "") +
+        (it.summary ? '<p class="x-tweet-text">' + escapeHtml(clamp(plain(it.summary), 120)) + "</p>" : "") +
         "</div></article>"
       );
     }
