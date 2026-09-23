@@ -11,5 +11,5 @@ dist/
 /*.xml
 
 # 更新助手插件：编译依赖（从 Halo 的 jar 里抽出来的）和构建产物不进仓库
-/updater/lib/
-/updater/build/
+/plugins/*/lib/
+/plugins/*/build/

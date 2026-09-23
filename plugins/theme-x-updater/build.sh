@@ -42,7 +42,7 @@ printf 'Manifest-Version: 1.0\nPlugin-Main-Class: run.halo.app.plugin.BasePlugin
 JAR="$OUT/theme-x-updater-$VERSION.jar"
 "$JDK/jar.exe" --create --file "$(win "$JAR")" --manifest "$(win "$OUT/MANIFEST.MF")" -C "$(win "$OUT/classes")" .
 # 同时放一份到主题的静态资源里：主题升级后，插件可以用「远程下载」从自己站点装
-# https://你的域名/themes/theme-x/assets/updater/theme-x-updater.jar
-mkdir -p "$ROOT/../templates/assets/updater"
-cp "$JAR" "$ROOT/../templates/assets/updater/theme-x-updater.jar"
+# https://你的域名/themes/theme-x/assets/plugins/theme-x-updater.jar
+mkdir -p "$ROOT/../../templates/assets/plugins"
+cp "$JAR" "$ROOT/../../templates/assets/plugins/theme-x-updater.jar"
 echo "$JAR"

@@ -3,6 +3,6 @@
 .gitignore     export-ignore
 .gitattributes export-ignore
 
-# 更新助手插件的源码只放仓库里，不进主题包（编好的 jar 在 templates/assets/updater/ 里随主题分发）
-/updater       export-ignore
+# 配套插件的源码只放仓库里，不进主题包（编好的 jar 在 templates/assets/plugins/ 里随主题分发）
+/plugins       export-ignore
 CHANGELOG.md   -export-ignore

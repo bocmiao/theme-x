@@ -23,10 +23,10 @@ Halo 插件。GitHub 上的 theme-x 有新版本时，在后台提示，并在�
 `JDK_HOME` / `HALO_JAR` 覆盖。在 Git Bash 里：
 
 ```bash
-bash updater/build.sh
+bash plugins/theme-x-updater/build.sh
 ```
 
-产物是 `updater/build/theme-x-updater-<版本>.jar`，同时复制一份到 `templates/assets/updater/theme-x-updater.jar`
+产物是 `plugins/theme-x-updater/build/theme-x-updater-<版本>.jar`，同时复制一份到 `templates/assets/plugins/theme-x-updater.jar`
 随主题分发。改了插件记得先改 `src/main/resources/plugin.yaml` 里的版本号。
 
 ## 几个坑
