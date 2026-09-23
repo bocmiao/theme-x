@@ -31,7 +31,6 @@
       class="x-shell"
       th:with="hm=${theme.config.home},
                pf=${theme.config.profile},
-               pinnedName=${hm?.pinned},
                tabTwo=${hm?.tab_secondary == null ? #messages.msg('default.tabSecondary') : hm.tab_secondary},
                postLinkRaw=${#strings.trim(theme.config.nav?.post_button_link ?: '')}, postLink=${#strings.isEmpty(postLinkRaw) ? '/console/posts/editor' : (#strings.startsWith(postLinkRaw, '/') or #strings.startsWith(postLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(postLinkRaw), 'sms:') ? postLinkRaw : 'https://' + postLinkRaw)},
                xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
@@ -90,22 +89,13 @@
           th:attr="data-latest=${posts.page == 1 and not #lists.isEmpty(posts.items)} ? ${posts.items[0].metadata.name} : null"
         >
           <!--/*
-            置顶：不能用 postFinder.getByName —— 它内部是 client.get()，文章一旦被删
-            会抛 ExtensionNotFoundException，整个首页跟着 500。这里改成在最近 200 篇里
-            按名字找，找不到就当没有置顶，页面照常。
+            置顶用 Halo 自己的：文章管理里点「置顶」，它本来就会排到列表最前面，
+            这里只负责给它加上「已置顶」标记。主题不再单独存一份置顶文章。
           */-->
-          <th:block th:if="${posts.page == 1 and not #strings.isEmpty(pinnedName)}">
-            <th:block th:each="p : ${postFinder.list(1, 200).items}">
-              <th:block th:if="${p.metadata.name == pinnedName}">
-                <th:block th:replace="~{modules/tweet :: tweet(post=${p}, context=#{action.pinned})}"></th:block>
-              </th:block>
-            </th:block>
-          </th:block>
-
           <th:block th:each="post, st : ${posts.items}" th:with="eager=${posts.page == 1 and st.index &lt; 2}">
-            <th:block th:if="${post.metadata.name != pinnedName}">
-              <th:block th:replace="~{modules/tweet :: tweet(post=${post}, context=null)}"></th:block>
-            </th:block>
+            <th:block
+              th:replace="~{modules/tweet :: tweet(post=${post}, context=${post.spec.pinned ? #messages.msg('action.pinned') : null})}"
+            ></th:block>
           </th:block>
 
           <th:block th:if="${#lists.isEmpty(posts.items)}">

@@ -197,10 +197,6 @@ spec:
         - $formkit: text
           name: compose_placeholder
           label: 发帖框提示语
-        - $formkit: postSelect
-          name: pinned
-          label: 置顶文章
-          help: 会带着「已置顶」标记出现在时间线最上面。只在最近 200 篇里找，文章被删或太久远就自动不显示
         - $formkit: select
           name: media_grid
           label: 封面图排版
