@@ -173,11 +173,14 @@ spec:
           name: tab_secondary_source
           label: 第二个标签页取什么内容
           value: "hot"
+          help: 选「友链」最接近 X 的「正在关注」：给友链填了 RSS 地址（并在链接插件的设置里打开「公开 RSS 订阅动态」）就显示朋友们的最新文章，否则显示友链列表。要装「链接」插件
           options:
             - label: 最多访问
               value: hot
             - label: 指定分类
               value: category
+            - label: 友链（朋友们的最新文章，没有就列友链）
+              value: links
         - $formkit: categorySelect
           name: tab_secondary_category
           label: 指定的分类

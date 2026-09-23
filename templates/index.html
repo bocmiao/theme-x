@@ -122,7 +122,8 @@
         */-->
         <th:block th:if="${not #strings.isEmpty(tabTwo)}">
           <th:block
-            th:with="byCategory=${hm?.tab_secondary_source == 'category' and not #strings.isEmpty(hm?.tab_secondary_category)},
+            th:with="byLinks=${hm?.tab_secondary_source == 'links'},
+                     byCategory=${hm?.tab_secondary_source == 'category' and not #strings.isEmpty(hm?.tab_secondary_category)},
                      catVo=${byCategory
                        ? categoryFinder.listAll().^[metadata.name == '__${hm.tab_secondary_category}__']
                        : null}"
@@ -132,10 +133,13 @@
               data-timeline
               data-tab-panel="secondary"
               data-tab-limit="30"
-              th:attr="data-sort=${byCategory} ? null : 'visit',
-                       data-tab-fetch=${byCategory and catVo != null}
-                         ? ${catVo.status.permalink}
-                         : ${site.routes.archivesUri}"
+              th:attr="data-tab-links=${byLinks} ? '1' : null,
+                       data-sort=${byLinks or byCategory} ? null : 'visit',
+                       data-tab-fetch=${byLinks}
+                         ? null
+                         : (${byCategory and catVo != null}
+                           ? ${catVo.status.permalink}
+                           : ${site.routes.archivesUri})"
               hidden
             ></div>
           </th:block>

@@ -675,6 +675,11 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
 .x-follow-meta { flex: 1; min-width: 0; }
 .x-follow-meta a { color: var(--text); font-weight: 700; }
 .x-follow-meta span { display: block; color: var(--text-secondary); font-size: 0.933rem; }
+.x-follow-desc { color: var(--text) !important; margin-top: 4px; }
+
+/* 首页第二个标签页选「友链」时：动态是推文样式的卡片，没有动态就退回这种一行一个站点 */
+.x-timeline > .x-follow-row { border-bottom: 1px solid var(--border); }
+.x-tweet--friend .x-tweet-time { color: var(--text-secondary); }
 
 .x-footer-links {
   display: flex;

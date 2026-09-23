@@ -1429,16 +1429,14 @@
   /* 第二个标签页的内容是点开才去取的，省掉首屏那几十条白渲染的 HTML。
      取的是现成的分类页 / 归档页，拿里面的时间线，不依赖额外接口 */
   function fillTab(panel) {
+    if (panel.getAttribute("data-tab-links")) return fillFriends(panel);
     var url = panel.getAttribute("data-tab-fetch");
     if (!url || panel.hasAttribute("data-filled")) {
       sortTimeline(panel);
       return;
     }
     panel.setAttribute("data-filled", "1");
-    panel.innerHTML =
-      '<div class="x-skeleton"><div class="x-skeleton-avatar"></div><div class="x-skeleton-lines">' +
-      '<div class="x-skeleton-line"></div><div class="x-skeleton-line"></div><div class="x-skeleton-line"></div>' +
-      "</div></div>";
+    panel.innerHTML = tabSkeleton();
 
     fetch(url, { credentials: "same-origin" })
       .then(function (r) {
@@ -1490,6 +1488,144 @@
             "</p></div>";
         panel.removeAttribute("data-filled");
       });
+  }
+
+  function tabSkeleton() {
+    return (
+      '<div class="x-skeleton"><div class="x-skeleton-avatar"></div><div class="x-skeleton-lines">' +
+      '<div class="x-skeleton-line"></div><div class="x-skeleton-line"></div><div class="x-skeleton-line"></div>' +
+      "</div></div>"
+    );
+  }
+
+  /* 第二个标签页选「友链」时：先要「链接」插件抓回来的友链 RSS 动态（朋友们的最新文章，
+     这才对得上 X 的「正在关注」）；插件没开公开订阅、或者还没抓到东西，就退回友链列表。
+     两个都是公开接口，而且同样是点开才去取，首屏不受影响。 */
+  function fillFriends(panel) {
+    if (panel.hasAttribute("data-filled")) return;
+    panel.setAttribute("data-filled", "1");
+    panel.innerHTML = tabSkeleton();
+
+    var AVATAR = "/themes/theme-x/assets/images/avatar.svg";
+    var limit = Math.min(parseInt(panel.getAttribute("data-tab-limit"), 10) || 20, 50);
+
+    function getJSON(url) {
+      return fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } }).then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      });
+    }
+    // RSS 里的地址是别人给的，只认 http(s)，免得混进 javascript:
+    function safeUrl(u) {
+      u = String(u || "").trim();
+      return /^https?:\/\//i.test(u) ? u : "";
+    }
+    function host(u) {
+      try {
+        return new URL(u).host;
+      } catch (e) {
+        return "";
+      }
+    }
+    function img(src, fallback) {
+      return (
+        '<img class="x-avatar" src="' +
+        escapeHtml(src || fallback) +
+        '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' +
+        fallback +
+        "'\" />"
+      );
+    }
+    function clamp(s, n) {
+      s = String(s || "").replace(/\s+/g, " ").trim();
+      return s.length > n ? s.slice(0, n) + "…" : s;
+    }
+
+    function feedCard(it) {
+      var url = safeUrl(it.url);
+      if (!url) return "";
+      var h = host(url);
+      var name = it.author || it.linkName || h;
+      var time = it.publishedAt || "";
+      var open = ' target="_blank" rel="noopener noreferrer"';
+      return (
+        '<article class="x-tweet x-tweet--friend" data-friend-url="' + escapeHtml(url) + '">' +
+        '<div class="x-tweet-side"><a class="x-avatar-link" href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true">' +
+        img(safeUrl(it.authorLogo), AVATAR) +
+        "</a></div>" +
+        '<div class="x-tweet-main"><div class="x-tweet-head">' +
+        '<a class="x-tweet-name" href="' + escapeHtml(url) + '"' + open + ">" + escapeHtml(name) + "</a>" +
+        (h ? '<span class="x-tweet-handle">@' + escapeHtml(h) + "</span>" : "") +
+        (time
+          ? '<span class="x-tweet-dot">·</span><time class="x-tweet-time" datetime="' +
+            escapeHtml(time) +
+            '" data-relative-time="' +
+            escapeHtml(time) +
+            '">' +
+            escapeHtml(time.slice(0, 10)) +
+            "</time>"
+          : "") +
+        "</div>" +
+        '<h2 class="x-tweet-title"><a href="' + escapeHtml(url) + '"' + open + ">" +
+        escapeHtml(it.title || t("js.untitled", "无标题")) +
+        "</a></h2>" +
+        (it.summary ? '<p class="x-tweet-text">' + escapeHtml(clamp(it.summary, 160)) + "</p>" : "") +
+        "</div></article>"
+      );
+    }
+
+    function linkRow(link) {
+      var spec = link.spec || {};
+      var url = safeUrl(spec.url);
+      if (!url) return "";
+      var open = ' target="_blank" rel="noopener noreferrer"';
+      return (
+        '<div class="x-follow-row">' +
+        '<a href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true">' +
+        img(safeUrl(spec.logo), AVATAR) +
+        "</a>" +
+        '<div class="x-follow-meta">' +
+        '<a href="' + escapeHtml(url) + '"' + open + ">" + escapeHtml(spec.displayName || host(url)) + "</a>" +
+        '<span>@' + escapeHtml(host(url)) + "</span>" +
+        (spec.description ? '<span class="x-follow-desc">' + escapeHtml(clamp(spec.description, 80)) + "</span>" : "") +
+        "</div>" +
+        '<a class="x-btn" href="' + escapeHtml(url) + '"' + open + ">" + escapeHtml(t("js.visit", "访问")) + "</a>" +
+        "</div>"
+      );
+    }
+
+    function render(html, kind) {
+      if (!html) throw new Error("empty");
+      panel.innerHTML = html;
+      panel.setAttribute("data-friends", kind);
+      enhance(panel); // 相对时间靠它
+    }
+
+    getJSON("/apis/api.link.halo.run/v1alpha1/linkfeeds?limit=" + limit)
+      .then(function (data) {
+        render(((data && data.items) || []).map(feedCard).join(""), "feed");
+      })
+      ["catch"](function () {
+        return getJSON("/apis/api.link.halo.run/v1alpha1/links?size=" + Math.max(limit, 50)).then(function (data) {
+          render(((data && data.items) || []).map(linkRow).join(""), "links");
+        });
+      })
+      ["catch"](function () {
+        panel.innerHTML =
+          '<div class="x-empty"><h2>' +
+          escapeHtml(t("js.friendsEmptyTitle", "还没有友链")) +
+          "</h2><p>" +
+          escapeHtml(t("js.friendsEmptyText", "到后台「链接」里添加友链；给友链填上 RSS 地址，这里就会显示他们的最新文章。")) +
+          "</p></div>";
+      });
+
+    // 整张卡片可点，和站内的帖子卡片一个手感（外站一律新标签页打开）
+    on(panel, "click", function (e) {
+      var card = e.target.closest ? e.target.closest("[data-friend-url]") : null;
+      if (!card || e.target.closest("a, button")) return;
+      if (window.getSelection && String(window.getSelection())) return;
+      window.open(card.getAttribute("data-friend-url"), "_blank", "noopener");
+    });
   }
 
   /* 「最多访问」那一栏：服务端只给了最近 N 篇，顺序在前端排 */
