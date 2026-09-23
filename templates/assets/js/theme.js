@@ -1575,7 +1575,11 @@
 
     function getJSON(url) {
       return fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } }).then(function (r) {
-        if (!r.ok) throw new Error(r.status);
+        if (!r.ok) {
+          var err = new Error(r.status);
+          err.status = r.status;
+          throw err;
+        }
         return r.json();
       });
     }
@@ -1669,7 +1673,14 @@
       .then(function (data) {
         render(((data && data.items) || []).map(feedCard).join(""), "feed");
       })
-      ["catch"](function () {
+      ["catch"](function (e) {
+        // 站长自查用：动态接口 404 = 链接插件里的「公开 RSS 订阅动态」没开，这时只能退回友链列表
+        if (e && e.status === 404 && window.console && console.info) {
+          console.info(
+            "[theme-x] 友链动态接口没开放（404）。到后台「插件 → 链接 → 设置 → RSS 订阅」勾上「公开 RSS 订阅动态」，" +
+              "这个标签页就会显示朋友们的最新文章；现在先显示友链列表。"
+          );
+        }
         return getJSON("/apis/api.link.halo.run/v1alpha1/links?size=" + Math.max(limit, 50)).then(function (data) {
           render(((data && data.items) || []).map(linkRow).join(""), "links");
         });
