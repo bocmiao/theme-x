@@ -114,6 +114,17 @@
     } catch (e) {}
     return null;
   }
+  /* 只活到这次浏览结束的记忆：关掉标签页就没了。
+     首页那两个标签页用它——站内点来点去、刷新都保持刚选的那个，
+     但下次重新打开博客还是从第一个标签页（自己的文章）开始。 */
+  function session(key, value) {
+    try {
+      if (value === undefined) return sessionStorage.getItem(key);
+      if (value === null) sessionStorage.removeItem(key);
+      else sessionStorage.setItem(key, value);
+    } catch (e) {}
+    return null;
+  }
   function getJSON(url) {
     return fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" }).then(function (r) {
       if (!r.ok) throw new Error(r.status);
@@ -1386,7 +1397,8 @@
       tab.setAttribute("aria-controls", "x-panel-" + tab.getAttribute("data-tab"));
     });
 
-    var saved = store(KEY.tab);
+    store(KEY.tab, null); // 1.13.10 之前记在 localStorage 里，会一直粘着，清掉
+    var saved = session(KEY.tab);
     if (saved === "primary" || saved === "secondary") select(saved, false);
 
     tabs.forEach(function (tab, i) {
@@ -1422,7 +1434,7 @@
       if (loader) loader.style.display = name === "primary" ? "" : "none";
       if (cardFocusReset) cardFocusReset();
       fillTab(panel);
-      if (remember) store(KEY.tab, name);
+      if (remember) session(KEY.tab, name);
     }
   }
 
