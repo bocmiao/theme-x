@@ -11,8 +11,8 @@ spec:
   logo: logo.svg
   homepage: https://github.com/bocmiao/theme-x
   repo: https://github.com/bocmiao/theme-x
-  displayName: "theme-x 更新助手"
-  description: "在后台检查 theme-x 主题有没有新版本；有的话，主题列表里会出现「更新到 x.y.z」按钮，点一下就升级，主题设置保留。"
+  displayName: "theme-x 助手"
+  description: "两件事：一是检查 theme-x 有没有新版本，有就在主题列表里给出「更新到 x.y.z」按钮，点一下升级、设置保留；二是「内容 → 友链 RSS」里一键给所有友链自动发现 RSS 地址并抓取，首页的「正在关注」标签页就靠它。"
   license:
     - name: MIT
-  version: 1.0.0
+  version: 1.1.0

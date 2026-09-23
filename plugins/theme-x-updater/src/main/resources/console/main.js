@@ -1,8 +1,10 @@
-/* theme-x 更新助手 · 后台部分
+/* theme-x 助手 · 后台部分
    不经过构建：直接用 Halo 后台挂在 window 上的 Vue / HaloComponents / HaloApiClient。
    1. 主题列表里 theme-x 那一行：有新版本时多一个「更新到 x.y.z」按钮
    2. 仪表盘部件「theme-x 更新」（仪表盘「设置 → 添加部件 → 小部件中心 → 其他」里加）
-   3. 进后台时有新版本就弹一条提示（每个版本每次打开浏览器只提示一次） */
+   3. 进后台时有新版本就弹一条提示（每个版本每次打开浏览器只提示一次）
+   4. 菜单「内容 → 友链 RSS」：一键给所有友链自动发现 RSS 地址并抓取，
+      首页那个「正在关注」标签页就靠这些数据 */
 (function () {
   "use strict";
 
@@ -343,6 +345,342 @@
     }
   });
 
+  /* ---------------------------------------------------------------- 友链 RSS 批量发现
+     「链接」插件自己只在编辑友链的弹窗里给了一个「发现订阅地址」按钮，一条一条点。
+     这页把它批量跑一遍：扫所有友链 → 自动扒出各自的 RSS 地址 → 填好并开启 → 立刻抓一次。
+     顺带管一下「公开 RSS 订阅动态」那个开关——不开的话主题读不到动态。 */
+  var LINKS_PLUGIN = "PluginLinks";
+
+  function ax() {
+    return API.axiosInstance;
+  }
+  function uniq(list) {
+    var seen = {};
+    return (list || [])
+      .map(function (s) {
+        return String(s || "").trim();
+      })
+      .filter(function (s) {
+        if (!s || seen[s]) return false;
+        seen[s] = 1;
+        return true;
+      });
+  }
+
+  var LinksRssPage = Vue.defineComponent({
+    name: "ThemeXLinksRss",
+    setup: function () {
+      var rows = Vue.ref([]);
+      var loading = Vue.ref(true);
+      var running = Vue.ref("");
+      var publicOn = Vue.ref(null);
+      var missing = Vue.ref(false); // 没装「链接」插件
+
+      function mapRow(item) {
+        var spec = item.spec || {};
+        var rss = spec.rss || {};
+        var st = (item.status && item.status.rss) || {};
+        return {
+          raw: item,
+          name: item.metadata.name,
+          title: spec.displayName || item.metadata.name,
+          url: spec.url || "",
+          enabled: rss.enabled === true,
+          feeds: rss.feedUrls || [],
+          items: st.itemCount || 0,
+          error: st.lastError || "",
+          note: ""
+        };
+      }
+
+      function load() {
+        loading.value = true;
+        // 重新拉列表时把这一轮的处理结果留着，不然「没找到 RSS 地址」这种提示一刷就没了
+        var notes = {};
+        rows.value.forEach(function (r) {
+          if (r.note) notes[r.name] = r.note;
+        });
+        return ax()
+          .get("/apis/core.halo.run/v1alpha1/links", { params: { page: 1, size: 200 } })
+          .then(function (r) {
+            rows.value = ((r.data && r.data.items) || []).map(function (item) {
+              var row = mapRow(item);
+              row.note = notes[row.name] || "";
+              return row;
+            });
+            missing.value = false;
+          })
+          .catch(function () {
+            missing.value = true;
+          })
+          .then(function () {
+            return ax()
+              .get("/apis/api.console.halo.run/v1alpha1/plugins/" + LINKS_PLUGIN + "/json-config")
+              .then(function (r) {
+                publicOn.value = !!(r.data && r.data.rss && r.data.rss.publicEnabled);
+              })
+              .catch(function () {
+                publicOn.value = null;
+              });
+          })
+          .then(function () {
+            loading.value = false;
+          });
+      }
+
+      function enablePublic() {
+        running.value = "public";
+        return ax()
+          .get("/apis/api.console.halo.run/v1alpha1/plugins/" + LINKS_PLUGIN + "/json-config")
+          .then(function (r) {
+            var body = r.data || {};
+            body.rss = Object.assign({}, body.rss, { enabled: true, publicEnabled: true });
+            return API.consoleApiClient.plugin.plugin.updatePluginJsonConfig({ name: LINKS_PLUGIN, body: body });
+          })
+          .then(function () {
+            publicOn.value = true;
+            C.Toast.success("已打开「公开 RSS 订阅动态」");
+          })
+          .catch(function (e) {
+            C.Toast.error("打开失败：" + errorText(e));
+          })
+          .then(function () {
+            running.value = "";
+          });
+      }
+
+      // 一条：发现 → 存回去 → 抓一次
+      function handle(row, discover) {
+        row.note = "处理中…";
+        var step = discover && !row.feeds.length && row.url
+          ? ax()
+              .get("/apis/console.api.link.halo.run/v1alpha1/rss/discovery", { params: { url: row.url } })
+              .then(function (r) {
+                var found = uniq((r.data && r.data.feedUrls) || []);
+                if (!found.length) {
+                  row.note = "没找到 RSS 地址";
+                  return false;
+                }
+                var obj = JSON.parse(JSON.stringify(row.raw));
+                obj.spec.rss = { enabled: true, feedUrls: uniq((obj.spec.rss && obj.spec.rss.feedUrls) || []).concat(found) };
+                obj.spec.rss.feedUrls = uniq(obj.spec.rss.feedUrls);
+                return ax()
+                  .put("/apis/core.halo.run/v1alpha1/links/" + row.name, obj)
+                  .then(function (res) {
+                    row.raw = res.data || obj;
+                    row.feeds = obj.spec.rss.feedUrls;
+                    row.enabled = true;
+                    row.note = "发现 " + found.length + " 个订阅地址";
+                    return true;
+                  });
+              })
+          : Promise.resolve(row.feeds.length > 0);
+
+        return step
+          .then(function (go) {
+            if (!go) return null;
+            return ax().post("/apis/console.api.link.halo.run/v1alpha1/links/" + row.name + "/rss/refresh");
+          })
+          .then(function (r) {
+            if (!r) return;
+            var d = r.data || {};
+            var got = d.fetchedItems != null ? d.fetchedItems : d.itemCount;
+            row.note = (row.note && row.note.indexOf("发现") === 0 ? row.note + "，" : "") + "抓到 " + (got || 0) + " 条";
+            row.error = "";
+          })
+          .catch(function (e) {
+            row.note = "失败：" + errorText(e);
+          });
+      }
+
+      // 一条一条来，别一口气去敲十几个别人的站
+      function runAll(discover) {
+        running.value = discover ? "discover" : "refresh";
+        var list = rows.value.filter(function (r) {
+          return discover ? r.url : r.feeds.length;
+        });
+        var i = 0;
+        function next() {
+          if (i >= list.length) return Promise.resolve();
+          return handle(list[i++], discover).then(next);
+        }
+        return next()
+          .then(function () {
+            return load();
+          })
+          .then(function () {
+            var ok = rows.value.filter(function (r) {
+              return r.feeds.length;
+            }).length;
+            var none = rows.value.filter(function (r) {
+              return !r.feeds.length;
+            }).length;
+            C.Toast.success(
+              discover
+                ? "扫完 " + list.length + " 个友链：" + ok + " 个有 RSS" + (none ? "，" + none + " 个没找到" : "")
+                : "抓取完成"
+            );
+            running.value = "";
+          });
+      }
+
+      Vue.onMounted(load);
+
+      function hint() {
+        if (missing.value) {
+          return box("没装「链接」插件", "这页要配合官方的「链接」插件用。装上它、添加几条友链之后再回来。", "#b45309");
+        }
+        if (publicOn.value === false) {
+          return h("div", { style: boxStyle("#b45309") }, [
+            h("div", { style: "flex:1" }, [
+              h("strong", null, "「公开 RSS 订阅动态」还没开"),
+              h("div", { style: "margin-top:4px" }, "不开的话，主题读不到友链动态，首页那个标签页只能显示友链列表。")
+            ]),
+            h(
+              C.VButton,
+              { size: "sm", type: "secondary", loading: running.value === "public", onClick: enablePublic },
+              function () {
+                return "立即打开";
+              }
+            )
+          ]);
+        }
+        if (publicOn.value === true) {
+          return box("准备就绪", "「公开 RSS 订阅动态」已打开，抓到的友链文章会出现在首页的「正在关注」标签页里。", "#15803d");
+        }
+        return null;
+      }
+      function boxStyle(color) {
+        return (
+          "display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;font-size:13px;line-height:1.6;" +
+          "background:" + color + "14;color:" + color + ";margin-bottom:12px"
+        );
+      }
+      function box(title, text, color) {
+        return h("div", { style: boxStyle(color) }, [
+          h("div", null, [h("strong", null, title), h("div", { style: "margin-top:4px" }, text)])
+        ]);
+      }
+
+      function cell(content, style) {
+        return h("div", { style: "flex:1;min-width:0;" + (style || "") }, content);
+      }
+
+      function row(r) {
+        return h(
+          "div",
+          {
+            style:
+              "display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #eaecf0;font-size:13px"
+          },
+          [
+            cell([
+              h("div", { style: "font-weight:600;color:#111827" }, r.title),
+              h("div", { style: "color:#6b7280;word-break:break-all" }, r.url || "没填网站地址")
+            ]),
+            cell(
+              r.feeds.length
+                ? r.feeds.map(function (f) {
+                    return h("div", { style: "color:#374151;word-break:break-all" }, f);
+                  })
+                : h("span", { style: "color:#9ca3af" }, "未配置"),
+              "flex:1.2"
+            ),
+            cell(
+              r.note
+                ? h("span", { style: "color:" + (/失败|没找到/.test(r.note) ? "#dc2626" : "#15803d") }, r.note)
+                : r.error
+                  ? h("span", { style: "color:#dc2626", title: r.error }, "上次出错")
+                  : h("span", { style: "color:#6b7280" }, r.items ? r.items + " 条" : r.enabled ? "已开启" : "未开启"),
+              "flex:0 0 160px"
+            ),
+            h(
+              C.VButton,
+              {
+                size: "sm",
+                disabled: !!running.value || !r.url,
+                onClick: function () {
+                  handle(r, true);
+                }
+              },
+              function () {
+                return r.feeds.length ? "抓取" : "发现";
+              }
+            )
+          ]
+        );
+      }
+
+      return function () {
+        return h("div", null, [
+          h(C.VPageHeader, { title: "友链 RSS" }, {
+            icon: function () {
+              return h(C.IconLink);
+            },
+            actions: function () {
+              return h(C.VSpace, null, function () {
+                return [
+                  h(
+                    C.VButton,
+                    { size: "sm", disabled: !!running.value, onClick: function () { load(); } },
+                    function () {
+                      return "刷新列表";
+                    }
+                  ),
+                  h(
+                    C.VButton,
+                    {
+                      size: "sm",
+                      disabled: !!running.value || !rows.value.length,
+                      loading: running.value === "refresh",
+                      onClick: function () { runAll(false); }
+                    },
+                    function () {
+                      return "立即抓取全部";
+                    }
+                  ),
+                  h(
+                    C.VButton,
+                    {
+                      size: "sm",
+                      type: "secondary",
+                      disabled: !!running.value || !rows.value.length,
+                      loading: running.value === "discover",
+                      onClick: function () { runAll(true); }
+                    },
+                    function () {
+                      return "一键发现并开启";
+                    }
+                  )
+                ];
+              });
+            }
+          }),
+          h("div", { style: "margin:16px" }, [
+            hint(),
+            h(
+              "div",
+              { style: "background:#fff;border-radius:8px;outline:1px solid #eaecf0;overflow:hidden" },
+              [
+                h(
+                  "div",
+                  { style: "padding:12px 16px;font-size:13px;color:#6b7280;line-height:1.6" },
+                  "「一键发现并开启」会挨个访问友链的网站，找出它们的 RSS / Atom 地址，填好、开启订阅，再立刻抓一次。" +
+                    "已经填过地址的只抓取、不覆盖。友链多的时候会慢一点，一条一条来的，别关页面。"
+                ),
+                loading.value
+                  ? h("div", { style: "padding:24px" }, [h(C.VLoading)])
+                  : rows.value.length
+                    ? h("div", null, rows.value.map(row))
+                    : h("div", { style: "padding:24px;text-align:center;color:#6b7280;font-size:13px" }, "还没有友链")
+              ]
+            )
+          ])
+        ]);
+      };
+    }
+  });
+
   /* ---------------------------------------------------------------- 进后台时的提示 */
   function canManageThemes() {
     try {
@@ -375,7 +713,22 @@
   /* ---------------------------------------------------------------- 注册 */
   window["theme-x-updater"] = shared.definePlugin({
     components: {},
-    routes: [],
+    routes: [
+      {
+        parentName: "Root",
+        route: {
+          path: "/theme-x/links-rss",
+          name: "ThemeXLinksRss",
+          component: Vue.markRaw(LinksRssPage),
+          meta: {
+            title: "友链 RSS",
+            searchable: true,
+            permissions: ["plugin:links:manage"],
+            menu: { name: "友链 RSS", group: "content", icon: Vue.markRaw(C.IconLink), priority: 52 }
+          }
+        }
+      }
+    ],
     extensionPoints: {
       // 这个扩展点的返回值不会被 await，必须同步返回数组
       "theme:list-item:operation:create": function (theme) {
