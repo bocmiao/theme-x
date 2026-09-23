@@ -476,6 +476,58 @@
     });
   }
 
+  /* ------------------------------------------------- 摘要里的网址变成链接 */
+  /* 列表里的摘要是纯文本（Halo 生成摘要时把标签都剥掉了），网址就成了不可点的黑字。
+     X 上这种链接是蓝色可点的，这里按同样的做法处理。瞬间那种本身就是 HTML（.x-prose），不碰。 */
+  var URL_RE = /\bhttps?:\/\/[^\s<>"'（）【】]+/g;
+
+  function prettyUrl(url) {
+    var shown = url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+    return shown.length > 42 ? shown.slice(0, 42) + "…" : shown;
+  }
+
+  function makeLink(url) {
+    var a = document.createElement("a");
+    a.href = url;
+    a.textContent = prettyUrl(url);
+    a.title = url;
+    var external = true;
+    try {
+      external = new URL(url, location.href).host !== location.host;
+    } catch (e) {}
+    if (external) {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer nofollow";
+    }
+    return a;
+  }
+
+  function linkifyExcerpts(ctx) {
+    $$(".x-tweet-text:not(.x-prose)", ctx).forEach(function (el) {
+      if (el.hasAttribute("data-linked")) return;
+      el.setAttribute("data-linked", "1");
+      var text = el.textContent;
+      if (text.indexOf("http") < 0) return;
+      var frag = document.createDocumentFragment();
+      var last = 0;
+      var m;
+      URL_RE.lastIndex = 0;
+      while ((m = URL_RE.exec(text))) {
+        // 句末的标点不算地址的一部分
+        var raw = m[0].replace(/[.,;:!?。，、；：！？)\]}）】]+$/, "");
+        if (!raw) continue;
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        frag.appendChild(makeLink(raw));
+        last = m.index + raw.length;
+        URL_RE.lastIndex = last;
+      }
+      if (!last) return;
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      el.textContent = "";
+      el.appendChild(frag);
+    });
+  }
+
   /* --------------------------------------------------------- 卡片整块可点 */
   function initTweetClicks(ctx) {
     $$("[data-tweet]", ctx).forEach(function (card) {
@@ -3091,6 +3143,7 @@
     ctx = ctx || document;
     enhanceCounts(ctx);
     enhanceTimes(ctx);
+    linkifyExcerpts(ctx);
     initTweetClicks(ctx);
     initLikes(ctx);
     initBookmarks(ctx);
