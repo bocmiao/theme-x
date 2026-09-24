@@ -21,9 +21,9 @@
                content=${moment.spec.content},
                photos=${content.medium == null ? null : content.medium.?[type.name == 'PHOTO']},
                others=${content.medium == null ? null : content.medium.?[type.name != 'PHOTO']},
-               mname=${moment.owner?.displayName ?: (pf?.name ?: (site.title))},
-               mhandle=${moment.owner?.name ?: (pf?.handle ?: ('blog'))},
-               mavatar=${moment.owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
+               mname=${pf?.byline == 'author' ? (moment.owner?.displayName ?: (pf?.name ?: site.title)) : (pf?.name ?: (moment.owner?.displayName ?: site.title))},
+               mhandle=${pf?.byline == 'author' ? (moment.owner?.name ?: (pf?.handle ?: 'blog')) : (pf?.handle ?: (moment.owner?.name ?: 'blog'))},
+               mavatar=${pf?.byline == 'author' ? (moment.owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (moment.owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))}"
     >
       <th:block th:replace="~{modules/nav :: nav(current='moments')}"></th:block>
 

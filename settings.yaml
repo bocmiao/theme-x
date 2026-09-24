@@ -8,10 +8,20 @@ spec:
     - group: profile
       label: 个人资料
       formSchema:
+        - $formkit: select
+          name: byline
+          label: 文章卡片上的署名
+          value: site
+          help: 单人博客选「用这里的资料」，全站只认这一套名字和头像，Halo 账号里的显示名称、头像不用再管；多人博客选「用各自的 Halo 账号」，每篇文章显示真正的作者（这时左栏等处仍用这里的资料）
+          options:
+            - label: 用这里的资料（单人博客）
+              value: site
+            - label: 用各文章作者的 Halo 账号（多人博客）
+              value: author
         - $formkit: attachment
           name: avatar
           label: 头像
-          help: 左栏、手机抽屉、关于页、留言板和评论区提示用的头像。时间线里优先显示文章作者自己的头像，作者没设头像时才用这张
+          help: 左栏、手机抽屉、关于页、留言板、评论区提示，以及（署名选「用这里的资料」时）所有文章和瞬间卡片都用这张。留空则用站点 Logo
           accepts:
             - "image/*"
         - $formkit: attachment

@@ -51,9 +51,9 @@
       th:with="pf=${theme.config.profile},
                po=${theme.config.post},
                owner=${post.owner},
-               xname=${owner?.displayName ?: (pf?.name ?: (site.title))},
-               xhandle=${owner?.name ?: (pf?.handle ?: ('blog'))},
-               xavatar=${owner?.avatar ?: (pf?.avatar ?: ('/themes/theme-x/assets/images/avatar.svg'))},
+               xname=${pf?.byline == 'author' ? (owner?.displayName ?: (pf?.name ?: site.title)) : (pf?.name ?: (owner?.displayName ?: site.title))},
+               xhandle=${pf?.byline == 'author' ? (owner?.name ?: (pf?.handle ?: 'blog')) : (pf?.handle ?: (owner?.name ?: 'blog'))},
+               xavatar=${pf?.byline == 'author' ? (owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))},
                relatedCount=${#conversions.convert(po?.related_count ?: (4), 'java.lang.Integer')}"
     >
       <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
