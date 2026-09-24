@@ -2842,12 +2842,19 @@
   /* ------------------------------------------------------- Epic 限免 */
   // Epic 官方的 freeGamesPromotions 接口不带 CORS 头，浏览器直接调不了，所以要么走站长自己的接口
   //（设置里填，推荐），要么走带 CORS 的公共镜像。三种返回格式都认：
-  //   聚合 API：{ code: 0, data: { current: [...], upcoming: [...] } }
+  //   聚合 API（api.miao.club 的 /api/epic/free，或旧版 juhe-api 的 /api/epic-free）：
+  //     { code: 200 或 0, data: { current: [...], upcoming: [...] } }
   //   官方原样反代：{ data: { Catalog: { searchStore: { elements: [...] } } } }
   //   60s / UAPI：{ data: [{ id, title, cover, link, seller, original_price_desc, free_start_at, free_end_at, is_free_now }] }
   // 接口给什么都当不可信数据：只用 textContent 写文字，链接只认 https 的 epicgames.com，图片只认 https。
-  // 内置源是实测带 CORS 头、浏览器能直接调的；60s 官方主域名声明仅供调试，不放进来
-  var EPIC_APIS = ["https://uapis.cn/api/v1/game/epic-free", "https://60s.7se.cn/v2/epic", "https://60s.crystelf.top/v2/epic"];
+  // 内置源是实测带 CORS 头、浏览器能直接调的；60s 官方主域名声明仅供调试，不放进来。
+  // api.miao.club 是主题作者自己的接口（匿名每个 IP 每天 100 次，访客本地还有几小时缓存，够用）
+  var EPIC_APIS = [
+    "https://api.miao.club/api/epic/free",
+    "https://uapis.cn/api/v1/game/epic-free",
+    "https://60s.7se.cn/v2/epic",
+    "https://60s.crystelf.top/v2/epic"
+  ];
   var EPIC_STORE = "https://store.epicgames.com/free-games";
 
   function epicTime(v) {
@@ -2967,21 +2974,26 @@
     });
   }
 
-  // 聚合 API（juhe-api 的 /api/epic-free）：{ current: [...], upcoming: [...] }，
-  // 每项 { title, description, type, image, original_price, start, end, url }
+  // 聚合 API：{ current: [...], upcoming: [...] }，两代字段名都认——
+  //   api.miao.club：{ id, title, description, seller, originalPrice, startDate, endDate, url, image: { wide, tall } }
+  //   旧版 juhe-api：{ title, description, image, original_price, start, end, url }
   function epicFromJuhe(data) {
     return (data.current || []).concat(data.upcoming || []).map(function (g) {
       g = g || {};
+      var img = g.image && typeof g.image === "object" ? g.image.wide || g.image.tall : g.image;
+      var price = g.originalPrice != null ? g.originalPrice : g.original_price;
+      var start = g.startDate != null ? g.startDate : g.start;
+      var end = g.endDate != null ? g.endDate : g.end;
       return {
         id: g.id || g.url || g.title,
         title: g.title,
         desc: g.description,
-        cover: g.image,
+        cover: img,
         link: g.url,
         seller: g.seller,
-        price: /[1-9]/.test(String(g.original_price || "")) ? g.original_price : "", // 原价就是 0 的不划价
-        start: epicTime(g.start) || epicBeijing(g.start),
-        end: epicTime(g.end) || epicBeijing(g.end)
+        price: /[1-9]/.test(String(price || "")) ? price : "", // 原价就是 0 的不划价
+        start: epicTime(start) || epicBeijing(start),
+        end: epicTime(end) || epicBeijing(end)
       };
     });
   }
@@ -3230,7 +3242,9 @@
 
     var now = Date.now();
     // 站长填了自己的接口就先用它；「失败时退回公共接口」关掉的话就只用它
-    var apis = cfg.api ? [cfg.api].concat(cfg.fallback === false ? [] : EPIC_APIS) : EPIC_APIS;
+    var apis = cfg.api
+      ? [cfg.api].concat(cfg.fallback === false ? [] : EPIC_APIS.filter(function (u) { return u !== cfg.api; }))
+      : EPIC_APIS;
     var ttl = Math.max(0.25, Math.min(48, Number(cfg.cacheHours) || 3)) * 3600000;
     var showSoon = cfg.upcoming !== false;
     var limit = Math.max(1, Math.min(12, Number(cfg.count) || 4));

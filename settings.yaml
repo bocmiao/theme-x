@@ -576,12 +576,12 @@ spec:
         - $formkit: text
           name: api
           label: 数据接口
-          help: 推荐填你自己的接口，例如聚合 API 的 https://你的域名/api/epic-free（要带 CORS 头；站点是 https 的话接口也必须是 https）。留空则用内置的公共接口。聚合 API、Epic 官方原始格式、60s / UAPI 三种返回格式都能识别。
+          help: 留空就行——内置的第一个就是 https://api.miao.club/api/epic/free，后面还有几个公共接口兜底。想用自己部署的接口再填（要带 CORS 头；站点是 https 的话接口也必须是 https）。api.miao.club / 聚合 API、Epic 官方原始格式、60s / UAPI 三种返回格式都能识别。
         - $formkit: select
           name: fallback
           label: 自己的接口失败时
           value: "on"
-          help: 只在上面填了接口时有意义。退回公共接口意味着访客的浏览器会直连第三方（uapis.cn、60s 社区实例），介意的话选「不退回」，那样接口挂了卡片就不出现。
+          help: 只在上面填了接口时有意义。退回内置接口意味着访客的浏览器会直连第三方（api.miao.club、uapis.cn、60s 社区实例），介意的话选「不退回」，那样接口挂了卡片就不出现。
           options:
             - label: 退回内置的公共接口
               value: "on"

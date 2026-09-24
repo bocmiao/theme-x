@@ -340,11 +340,14 @@ Halo 没有「系列」这种东西，所以这里借分类来表达：**把一�
 
 **数据从哪来。** Epic 官方的 `freeGamesPromotions` 接口不带跨域头，浏览器里直接调不了，而 Halo 主题没有服务端代码，所以数据是访客的浏览器去拿的：
 
-1. **推荐：填你自己的接口**（「Epic 限免 → 数据接口」）。要求：返回 JSON、带 `Access-Control-Allow-Origin` 头；站点是 https 的话接口也得是 https。三种格式都认：
-   - 聚合 API 的 `/api/epic-free`：`{ code: 0, data: { current: [...], upcoming: [...] } }`，每项 `title / description / image / original_price / start / end / url`；
+1. **「数据接口」留空就能用**：内置的第一个源是主题作者自己的 [api.miao.club](https://api.miao.club/#/api/epic) 的 `/api/epic/free`
+   （带跨域头，匿名每个 IP 每天 100 次；访客浏览器里有几小时缓存，一个访客一天也就请求一两次）。
+2. **想用自己的接口就填上**（「Epic 限免 → 数据接口」）。要求：返回 JSON、带 `Access-Control-Allow-Origin` 头；站点是 https 的话接口也得是 https。三种格式都认：
+   - api.miao.club / 聚合 API：`{ code: 200, data: { current: [...], upcoming: [...] } }`，每项 `title / description / seller / originalPrice / startDate / endDate / url / image.wide`
+     （旧版的 `original_price / start / end`、`image` 直接是字符串、`code: 0` 也认）；
    - Epic 官方接口原样反代：`{ data: { Catalog: { searchStore: { elements: [...] } } } }`（主题会自己挑出折后 0 元的那条促销）；
    - 60s / UAPI：`{ data: [{ title, cover, link, seller, original_price_desc, free_start_at, free_end_at }] }`。
-2. 留空，或者自己的接口失败且允许退回时，依次试内置的公共接口：`uapis.cn` → `60s.7se.cn` → `60s.crystelf.top`（2026-09 实测都带跨域头）。
+3. 留空，或者自己的接口失败且允许退回时，依次试内置的接口：`api.miao.club` → `uapis.cn` → `60s.7se.cn` → `60s.crystelf.top`（2026-09 实测都带跨域头）。
    这意味着访客的浏览器会直连这些第三方；介意的话把「自己的接口失败时」改成「不退回」。公共实例由个人维护，哪天挂了卡片会自动消失，不会留个空壳。
 
 用 Nginx 把官方接口反代成同源地址的写法（隐私最好，访客不接触任何第三方接口）：
