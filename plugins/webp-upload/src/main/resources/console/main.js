@@ -1,15 +1,37 @@
 /* 上传自动转 WebP · 后台部分
-   Halo 后台上传附件走的是 XHR + FormData（附件库用 Uppy，编辑器粘贴图片走 axios，
-   底下都是 XMLHttpRequest）。这里把 send 包一层：发现是往附件上传接口传图片，
-   先在 canvas 里转成 WebP，再把 FormData 里的那份文件换掉。服务器上什么都不用装。 */
+   后台上传附件都是往「带 attachment 的接口」POST 一个 FormData：附件库用 Uppy（XHR），
+   编辑器走 axios（底下也是 XHR），个别地方可能用 fetch。这里把 XHR.send 和 fetch 都包一层：
+   看到 FormData 里有 PNG / JPEG，就先在 canvas 里转成 WebP 再发。服务器上什么都不用装。
+
+   排查用：控制台里看 `window.__webpUpload.seen`，每次上传都会记一条（地址、是否命中、转换结果）。 */
 (function () {
   "use strict";
 
   var C = window.HaloComponents;
   var shared = window.HaloUiShared;
 
-  var UPLOAD = /\/apis\/(api\.console\.halo\.run|uc\.api\.storage\.halo\.run)\/v1alpha1\/attachments\/(-\/)?upload(\?|$)/;
+  // 不写死具体路径了：同源、路径里带 attachment 的 POST 都算附件上传
+  // （Halo 社区版是 /apis/api.console.halo.run/v1alpha1/attachments/upload，
+  //   个人中心是 /apis/uc.api.storage.halo.run/…/attachments/-/upload，Pro 版或插件可能另有路径）
   var SOURCE = { "image/png": 1, "image/jpeg": 1, "image/bmp": 1 };
+  var log = { seen: [], version: "1.1.0" };
+  window.__webpUpload = log;
+
+  function note(entry) {
+    entry.at = new Date().toISOString();
+    log.seen.push(entry);
+    if (log.seen.length > 30) log.seen.shift();
+    if (window.console && console.info) console.info("[webp-upload]", entry.url, entry.result);
+  }
+
+  function isUploadUrl(url) {
+    try {
+      var u = new URL(String(url || ""), location.href);
+      return u.origin === location.origin && /attachment/i.test(u.pathname);
+    } catch (e) {
+      return false;
+    }
+  }
 
   var cfg = { enabled: true, quality: 0.82, maxEdge: 0, minBytes: 20 * 1024, toast: true };
 
@@ -95,29 +117,56 @@
     return open.apply(this, arguments);
   };
 
+  /* 把 FormData 里的图片换成 WebP；返回一个 Promise，无论成败都会走到底，
+     不能因为转换失败把上传卡住。顺手把结果记进 __webpUpload.seen 方便排查。 */
+  function swap(body, url) {
+    if (!cfg.enabled) return Promise.resolve(note({ url: url, result: "插件设置里关掉了" }));
+    if (typeof createImageBitmap !== "function") return Promise.resolve(note({ url: url, result: "浏览器不支持 createImageBitmap" }));
+    var hit = pick(body);
+    if (!hit) return Promise.resolve(note({ url: url, result: "FormData 里没有够大的 PNG/JPEG" }));
+
+    return convert(hit.file)
+      .then(function (out) {
+        if (!out) return note({ url: url, result: "没换（浏览器转不出 WebP，或者转完反而更大）", file: hit.file.name });
+        body.set(hit.key, out, out.name);
+        note({ url: url, result: "已转 WebP " + mb(hit.file.size) + " → " + mb(out.size), file: hit.file.name });
+        if (cfg.toast && C && C.Toast) {
+          C.Toast.info(hit.file.name + " → WebP，" + mb(hit.file.size) + " → " + mb(out.size), { duration: 4000 });
+        }
+      })
+      .catch(function (e) {
+        note({ url: url, result: "转换出错：" + (e && e.message), file: hit.file.name });
+      });
+  }
+
   XMLHttpRequest.prototype.send = function (body) {
     var xhr = this;
     var args = arguments;
-    if (!cfg.enabled || !(body instanceof FormData) || !UPLOAD.test(xhr.__webpUrl || "") || typeof createImageBitmap !== "function") {
-      return send.apply(xhr, args);
-    }
-    var hit = pick(body);
-    if (!hit) return send.apply(xhr, args);
-
-    convert(hit.file)
-      .then(function (out) {
-        if (out) {
-          body.set(hit.key, out, out.name);
-          if (cfg.toast && C && C.Toast) {
-            C.Toast.info(hit.file.name + " → WebP，" + mb(hit.file.size) + " → " + mb(out.size), { duration: 4000 });
-          }
-        }
-      })
-      .catch(function () {})
-      .then(function () {
-        send.apply(xhr, args); // 转不成就原样上传，绝不能把上传卡死
-      });
+    var url = xhr.__webpUrl || "";
+    if (!(body instanceof FormData) || !isUploadUrl(url)) return send.apply(xhr, args);
+    swap(body, url).then(function () {
+      send.apply(xhr, args);
+    });
   };
+
+  // 有的地方用 fetch 传（Pro 版控制台、某些插件），一并接住
+  var rawFetch = window.fetch;
+  if (typeof rawFetch === "function") {
+    window.fetch = function (input, init) {
+      var url = typeof input === "string" ? input : input && input.url;
+      var body = init && init.body;
+      var method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
+      if (method !== "POST" || !(body instanceof FormData) || !isUploadUrl(url)) {
+        return rawFetch.apply(window, arguments);
+      }
+      var args = arguments;
+      return swap(body, url).then(function () {
+        return rawFetch.apply(window, args);
+      });
+    };
+  }
+
+  if (window.console && console.info) console.info("[webp-upload] 已就绪（" + log.version + "）：上传 PNG / JPEG 会自动转成 WebP");
 
   window["webp-upload"] = shared.definePlugin({ components: {}, routes: [], extensionPoints: {} });
 })();

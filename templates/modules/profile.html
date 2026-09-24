@@ -71,15 +71,20 @@
   </th:block>
 
   <!--/* 个人主页下面那排标签，当前页高亮 */-->
+  <!--/*
+    个人主页那排标签：只放「同一批内容的不同切面」——全部帖子 / 带图的 / 收藏的。
+    分类、标签不在这里，它们是站点级导航，左栏已经有了（1.20.0 之前这里还有「列表」「话题」，
+    点开和左栏的「分类」「标签」是同一个页面，一个地方两个入口还两个名字）。
+    只剩「帖子」一格时整排不画——一个孤零零的标签没有导航意义。
+  */-->
   <th:block th:fragment="tabs(current)">
     <div
       class="x-tabs"
       th:with="mediaRaw=${#strings.trim(theme.config.nav?.media_link ?: '')},
                mediaLink=${#strings.isEmpty(mediaRaw) ? '/media' : (#strings.startsWith(mediaRaw, '/') or #strings.startsWith(mediaRaw, '#') or #strings.startsWith(#strings.toLowerCase(mediaRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(mediaRaw), 'https://') ? mediaRaw : '/' + mediaRaw)}"
+      th:if="${not #strings.isEmpty(#strings.trim(theme.config.nav?.media_link ?: '')) or current == 'media' or theme.config.features?.bookmarks != 'off'}"
     >
       <a class="x-tab" th:classappend="${current == 'posts'} ? 'is-active'" th:attr="aria-current=${current == 'posts'} ? 'page' : null" th:href="@{${site.routes.archivesUri}}"><span th:text="#{profile.tabPosts}">帖子</span></a>
-      <a class="x-tab" th:classappend="${current == 'categories'} ? 'is-active'" th:attr="aria-current=${current == 'categories'} ? 'page' : null" th:href="@{${site.routes.categoriesUri}}"><span th:text="#{common.lists}">列表</span></a>
-      <a class="x-tab" th:classappend="${current == 'tags'} ? 'is-active'" th:attr="aria-current=${current == 'tags'} ? 'page' : null" th:href="@{${site.routes.tagsUri}}"><span th:text="#{common.topics}">话题</span></a>
       <!--/* 五个 <a> 必须写成一个样子：把 <span> 换行会在 <a> 里留下空白文本节点，
            .x-tab 是 flex 容器，多出来的匿名项迟早会让这一排表现分叉 */-->
       <!--/* 地址没填就不显示「媒体」，免得点出个 404；正身在媒体页上时当然要显示 */-->

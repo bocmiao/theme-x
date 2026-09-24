@@ -398,8 +398,45 @@ iconify-icon:not(:defined) { width: 1em; height: 1em; }
 [data-nav="mini"] .x-nav-collapse .x-collapse-out { display: block; }
 /* 底部改由收起按钮顶着，账号行跟在它下面 */
 .x-nav-inner .x-nav-account { margin-top: 0; }
-/* 这条要放在上面那句 display:none 之后，否则会被它盖掉 */
+/* 收放要有个过渡，不然是「啪」的一下。
+   宽度、间距用 transition 滑过去；文字用 max-width + opacity 收起（display 没法过渡），
+   同时 visibility 在动画结束那一刻才切，读屏器不会念到收起来的字。
+   「减少动态效果」的系统设置会把这些 transition 全部压到 0.01ms（见文件开头那段）。 */
 @media (min-width: 1300px) {
+  .x-nav { transition: width 0.26s var(--ease); }
+  .x-feed { transition: max-width 0.26s var(--ease), flex-basis 0.26s var(--ease); }
+  .x-nav-link,
+  .x-nav-collapse,
+  .x-nav-account { transition: background-color 0.2s var(--ease), color 0.2s var(--ease), gap 0.26s var(--ease), width 0.26s var(--ease), padding 0.26s var(--ease); }
+  .x-post-button { transition: background-color 0.2s var(--ease), width 0.26s var(--ease), gap 0.26s var(--ease); }
+
+  .x-nav-link span,
+  .x-post-button span,
+  .x-nav-collapse span,
+  .x-nav-account-meta {
+    display: block;
+    max-width: 200px;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 1;
+    visibility: visible;
+    transition: max-width 0.26s var(--ease), opacity 0.16s var(--ease) 0.1s, visibility 0s;
+  }
+  [data-nav="mini"] .x-nav-link span,
+  [data-nav="mini"] .x-post-button span,
+  [data-nav="mini"] .x-nav-collapse span,
+  [data-nav="mini"] .x-nav-account-meta {
+    max-width: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-width 0.26s var(--ease), opacity 0.12s var(--ease), visibility 0s 0.26s;
+  }
+  /* 收起时图标要回到居中的圆里：间距归零，别让 gap 把图标条撑宽 */
+  [data-nav="mini"] .x-nav-link,
+  [data-nav="mini"] .x-nav-collapse,
+  [data-nav="mini"] .x-post-button,
+  [data-nav="mini"] .x-nav-account { gap: 0; }
+
   .x-nav-collapse { display: flex; }
   /* 左栏收起时，省下来的 187px 全给中栏：三栏整体位置和两边留白都不动，
      页面不会往左缩、右边也不会空出一条 */
