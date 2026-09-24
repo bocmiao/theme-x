@@ -507,6 +507,9 @@
         root.setAttribute("data-nav", "mini");
         store(KEY.nav, "mini");
       }
+      // 收起侧边栏 = 切成博客的样子（中栏变宽 + 博客列表），展开就回到 X 的样子。
+      // 之后还想单独调列表样式，标签栏右边那个按钮和「显示」面板里照旧管用。
+      setFeedMode(mini ? "x" : "blog");
       syncNavCollapse();
     });
     syncNavCollapse();

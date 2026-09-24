@@ -401,6 +401,9 @@ iconify-icon:not(:defined) { width: 1em; height: 1em; }
 /* 这条要放在上面那句 display:none 之后，否则会被它盖掉 */
 @media (min-width: 1300px) {
   .x-nav-collapse { display: flex; }
+  /* 左栏收起时，省下来的 187px 全给中栏：三栏整体位置和两边留白都不动，
+     页面不会往左缩、右边也不会空出一条 */
+  :root[data-nav="mini"] { --feed-w: calc(600px + var(--nav-w) - var(--nav-w-compact)); }
 }
 
 /* 中栏 ------------------------------------------------------------------ */
@@ -802,6 +805,15 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
 [data-feed="blog"] .x-timeline .x-tweet:not(.x-tweet--friend) .x-media img { width: 100%; height: 100%; object-fit: cover; }
 /* 多图的九宫格在列表里只留第一张 */
 [data-feed="blog"] .x-timeline .x-tweet:not(.x-tweet--friend) .x-media > *:nth-child(n + 2) { display: none; }
+
+/* 博客列表里不再摆 X 那个「有什么新鲜事？」的发帖框 */
+[data-feed="blog"] .x-compose { display: none; }
+
+/* 左栏收起时中栏变宽了，缩略图跟着放大一点，不然一行里显得太小 */
+@media (min-width: 1300px) {
+  [data-nav="mini"][data-feed="blog"] .x-timeline .x-tweet:not(.x-tweet--friend) .x-media { width: 168px; height: 112px; }
+  [data-nav="mini"][data-feed="blog"] .x-timeline .x-tweet:not(.x-tweet--friend) .x-tweet-title { font-size: 1.266rem; }
+}
 
 @media (max-width: 499px) {
   [data-feed="blog"] .x-timeline .x-tweet:not(.x-tweet--friend) { padding: 12px; }
