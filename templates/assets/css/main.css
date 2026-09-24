@@ -354,23 +354,53 @@ iconify-icon:not(:defined) { width: 1em; height: 1em; }
   text-overflow: ellipsis;
 }
 
+/* 宽屏下左栏展开成带文字的样子。访客点了「收起侧边栏」（data-nav="mini"）就跳过这一档，
+   保持和窄屏一样的纯图标条 */
 @media (min-width: 1300px) {
   /* 右边多留一点，账号那一行别贴着中栏的竖线 */
-  .x-nav { width: var(--nav-w); align-items: flex-start; padding: 0 12px 0 4px; }
-  .x-nav-link { width: auto; padding-right: 24px; }
-  .x-nav-account {
+  :root:not([data-nav="mini"]) .x-nav { width: var(--nav-w); align-items: flex-start; padding: 0 12px 0 4px; }
+  :root:not([data-nav="mini"]) .x-nav-link { width: auto; padding-right: 24px; }
+  :root:not([data-nav="mini"]) .x-nav-account {
     justify-content: flex-start;
     gap: 12px;
     width: 100%;
     height: auto;
     padding: 12px;
   }
-  .x-nav-link span,
-  .x-post-button span,
-  .x-nav-account-meta { display: block; }
-  .x-post-button { width: 90%; max-width: 234px; height: 52px; gap: 8px; }
-  .x-post-button iconify-icon { display: none; }
-  .x-logo { margin-left: 0; }
+  :root:not([data-nav="mini"]) .x-nav-link span,
+  :root:not([data-nav="mini"]) .x-post-button span,
+  :root:not([data-nav="mini"]) .x-nav-collapse span,
+  :root:not([data-nav="mini"]) .x-nav-account-meta { display: block; }
+  :root:not([data-nav="mini"]) .x-post-button { width: 90%; max-width: 234px; height: 52px; gap: 8px; }
+  :root:not([data-nav="mini"]) .x-post-button iconify-icon { display: none; }
+  :root:not([data-nav="mini"]) .x-logo { margin-left: 0; }
+  :root:not([data-nav="mini"]) .x-nav-collapse { width: auto; padding-right: 24px; }
+}
+
+/* 收起 / 展开按钮：窄屏本来就是图标条，不显示 */
+.x-nav-collapse {
+  display: none;
+  align-items: center;
+  gap: 20px;
+  /* 顶到底部，紧挨着账号那一行 */
+  margin: auto 0 4px;
+  padding: 12px;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 1.266rem;
+  line-height: 1.25;
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.x-nav-collapse:hover { background: var(--hover); color: var(--text); }
+.x-nav-collapse span { display: none; font-size: 0.933rem; }
+.x-nav-collapse .x-collapse-out { display: none; }
+[data-nav="mini"] .x-nav-collapse .x-collapse-in { display: none; }
+[data-nav="mini"] .x-nav-collapse .x-collapse-out { display: block; }
+/* 底部改由收起按钮顶着，账号行跟在它下面 */
+.x-nav-inner .x-nav-account { margin-top: 0; }
+/* 这条要放在上面那句 display:none 之后，否则会被它盖掉 */
+@media (min-width: 1300px) {
+  .x-nav-collapse { display: flex; }
 }
 
 /* 中栏 ------------------------------------------------------------------ */

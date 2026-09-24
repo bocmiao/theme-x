@@ -213,6 +213,16 @@ spec:
       label: 文章
       formSchema:
         - $formkit: select
+          name: cover_fallback
+          label: 没设封面时用正文首图
+          value: "on"
+          help: 文章没设封面时，列表里的封面退回正文里的第一张图。代价是渲染这些文章的卡片要多读一次正文（只对没设封面的文章），站点很大又在意首页开销的话可以关掉。「媒体」页只认真正设了封面的文章，不受这一项影响
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（只用设定的封面）
+              value: "off"
+        - $formkit: select
           name: actions
           label: 互动栏
           value: "on"

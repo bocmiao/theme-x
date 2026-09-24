@@ -94,6 +94,9 @@
         var feed = read("x:feed");
         if (feed !== "x" && feed !== "blog") feed = defaults.feed === "blog" ? "blog" : "x";
         root.setAttribute("data-feed", feed);
+
+        // 访客把左栏收起来过的话，也要在渲染前就定下来，否则宽屏下会先宽后窄闪一下
+        if (read("x:nav") === "mini") root.setAttribute("data-nav", "mini");
       })();
       /*]]>*/
     </script>

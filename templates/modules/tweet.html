@@ -100,21 +100,38 @@
 
   <!--/* ================================================== 媒体卡 ========= */-->
   <!--/* 封面只有一张，按 X 的单图卡片铺开；正文里的多图由 JS 收成网格 */-->
-  <th:block th:fragment="media(post)">
+  <!--/*
+    封面：站长没在文章里设封面时，可以退回正文里的第一张图（「文章 → 没设封面时用正文首图」）。
+    列表接口里没有正文，所以这条兜底要额外取一次正文（只对没封面的文章取），默认是开的；
+    站点很大、很在意首页渲染开销的话可以在设置里关掉。
+    取地址用的是字符串裁剪：先切到 <img 之后，再取 src="…"，取不到就当没有封面。
+  */-->
+  <!--/* th:if 比 th:with 先求值，所以变量必须定义在外面这层，不能和 th:if 写在同一个标签上 */-->
+  <th:block
+    th:fragment="media(post)"
+    th:with="thumbs=${theme.config.features?.thumbnails != 'off'},
+             fallbackOn=${theme.config.post?.cover_fallback != 'off' and #strings.isEmpty(post.spec.cover)},
+             body=${fallbackOn ? postFinder.content(post.metadata.name)?.content : ''},
+             firstImg=${fallbackOn and body != null and #strings.contains(body, '&lt;img')
+               ? #strings.substringBefore(#strings.substringAfter(#strings.substringAfter(body, '&lt;img'), 'src=&quot;'), '&quot;')
+               : ''},
+             cover=${#strings.isEmpty(post.spec.cover)
+               ? (#strings.startsWith(firstImg, '/') or #strings.startsWith(firstImg, 'http') ? firstImg : '')
+               : post.spec.cover}"
+  >
     <div
       class="x-media"
       data-count="1"
-      th:if="${theme.config.home?.media_grid != 'off' and not #strings.isEmpty(post.spec.cover)}"
-      th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
+      th:if="${theme.config.home?.media_grid != 'off' and not #strings.isEmpty(cover)}"
     >
       <!--/* 列表里加载的是缩略图，data-fallback 兜住接口取不到的情况；
            点开灯箱时用 data-full 的原图 */-->
       <img
         th:src="${thumbs}
-          ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${post.spec.cover},size='l')}
-          : ${post.spec.cover}"
-        th:attr="data-fallback=${thumbs} ? ${post.spec.cover} : null,
-                 data-full=${post.spec.cover},
+          ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${cover},size='l')}
+          : ${cover}"
+        th:attr="data-fallback=${thumbs} ? ${cover} : null,
+                 data-full=${cover},
                  loading=${eager == true} ? null : 'lazy',
                  fetchpriority=${eager == true} ? 'high' : null"
         th:alt="${post.spec.title}"

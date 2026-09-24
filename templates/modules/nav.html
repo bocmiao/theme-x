@@ -114,6 +114,13 @@
         <span th:text="${nv?.post_button_text ?: (#messages.msg('common.compose'))}"></span>
       </a>
 
+      <!--/* 宽屏下把左栏收成纯图标条；窄屏本来就是图标条，这个按钮不显示 */-->
+      <button class="x-nav-collapse" type="button" data-nav-collapse aria-pressed="false" th:title="#{nav.collapse}" th:aria-label="#{nav.collapse}">
+        <iconify-icon class="x-collapse-in" icon="ri:contract-left-line" aria-hidden="true"></iconify-icon>
+        <iconify-icon class="x-collapse-out" icon="ri:contract-right-line" aria-hidden="true"></iconify-icon>
+        <span th:text="#{nav.collapse}">收起侧边栏</span>
+      </button>
+
       <!--/* 头像+昵称本来就该是「去我的主页」，之前绑的是显示设置，和上面的「更多」重复 */-->
       <a class="x-nav-account" th:href="@{${profileLink}}" th:title="#{common.profile}">
         <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" />

@@ -43,6 +43,7 @@
     avatar: "x:avatar",
     tab: "x:home-tab",
     feed: "x:feed",
+    nav: "x:nav",
     like: "x:liked:",
     bookmarks: "x:bookmarks",
     follow: "x:follow:",
@@ -477,6 +478,38 @@
       el.setAttribute("data-abs", abs); // 博客列表模式下显示的是这个绝对日期
       el.textContent = feedMode() === "blog" ? abs : rel;
     });
+  }
+
+  /* --------------------------------------------------------- 左栏收放 */
+  /* 宽屏（≥1300px）下左栏默认带文字，点一下收成纯图标条；窄屏本来就是图标条，按钮不显示。
+     选择存在访客自己浏览器里，和配色、字号一个待遇。 */
+  function syncNavCollapse() {
+    var mini = root.getAttribute("data-nav") === "mini";
+    var label = mini ? t("nav.expand", "展开侧边栏") : t("nav.collapse", "收起侧边栏");
+    $$("[data-nav-collapse]").forEach(function (btn) {
+      btn.setAttribute("aria-pressed", mini ? "true" : "false");
+      btn.title = label;
+      btn.setAttribute("aria-label", label);
+      var text = $("span", btn);
+      if (text) text.textContent = label;
+    });
+  }
+
+  function initNavCollapse() {
+    on(document, "click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-nav-collapse]") : null;
+      if (!btn) return;
+      var mini = root.getAttribute("data-nav") === "mini";
+      if (mini) {
+        root.removeAttribute("data-nav");
+        store(KEY.nav, null);
+      } else {
+        root.setAttribute("data-nav", "mini");
+        store(KEY.nav, "mini");
+      }
+      syncNavCollapse();
+    });
+    syncNavCollapse();
   }
 
   /* ------------------------------------------------------- 文章列表样式 */
@@ -3809,6 +3842,7 @@
     initAsideFollow,
     initNavMenu,
     initFeedStyle,
+    initNavCollapse,
     initSoftNav
   ];
 
