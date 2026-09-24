@@ -47,6 +47,7 @@
     <section
       class="x-apply"
       data-link-apply
+      th:attr="data-apply-autofill=${lk?.apply_autofill}"
       th:classappend="${place == 'aside'} ? 'x-apply--aside x-card' : 'x-apply--main'"
     >
       <h2 class="x-apply-head" th:text="#{links.applyTitle}">申请友链</h2>

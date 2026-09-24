@@ -73,6 +73,7 @@
             <a
               class="x-compose-field"
               th:href="@{${postLink}}"
+              th:attr="data-compose-hint=${hm?.compose_hint}"
               th:text="${hm?.compose_placeholder ?: (#messages.msg('default.composePlaceholder'))}"
             ></a>
             <div class="x-compose-bar">

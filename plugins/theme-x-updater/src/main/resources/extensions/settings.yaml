@@ -1,0 +1,38 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: theme-x-updater-settings
+spec:
+  forms:
+    - group: linkHealth
+      label: 友链体检
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 定时检查友链
+          value: "on"
+          help: 开着的话，每隔下面设的时间，用 api.miao.club 的「网站可用性检测」把「链接」插件里的友链挨个查一遍，结果在「内容 → 友链体检」里看。只出报告，不改友链、不影响前台。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: number
+          name: intervalHours
+          label: 每隔几小时查一次
+          number: integer
+          min: 6
+          max: 168
+          value: 24
+        - $formkit: number
+          name: threshold
+          label: 连续几次打不开算「失联」
+          number: integer
+          min: 1
+          max: 10
+          value: 3
+          help: 偶尔一次打不开很常见（对方在维护、检测服务器那边网络抖了一下；检测服务器在国内，连 GitHub Pages 之类的站偶尔会超时），连续几次都不行才标红。
+        - $formkit: password
+          name: apiKey
+          label: api.miao.club 的 API Key（可选）
+          help: 不填也能用：匿名每个 IP 每天 100 次、每分钟 20 次，一轮最多查 90 条友链。友链更多的话去 api.miao.club 注册一个 Key 填在这里（每天 1 万次）。

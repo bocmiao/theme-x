@@ -14,3 +14,20 @@ rules:
   - apiGroups: ["console.api.themexupdater.halo.run"]
     resources: ["themes/latest"]
     verbs: ["get"]
+---
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-theme-x-link-health
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    # 能管理友链的角色（「链接」插件的 role-template-link-manage）自动带上友链体检
+    rbac.authorization.halo.run/aggregate-to-role-template-link-manage: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Links"
+    rbac.authorization.halo.run/display-name: "友链体检"
+rules:
+  - apiGroups: ["console.api.themexupdater.halo.run"]
+    resources: ["linkhealth"]
+    verbs: ["get", "list", "create"]

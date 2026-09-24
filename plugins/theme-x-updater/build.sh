@@ -22,6 +22,13 @@ fi
 
 rm -rf "$OUT" && mkdir -p "$OUT/classes"
 
+# 友链体检用到 Jackson 2（Halo 的 Unstructured 用的就是它）和 Spring Data 的 Sort；老的 lib 目录里没有，补一次
+if [ ! -f "$LIB/jackson-databind-2.21.5.jar" ]; then
+  (cd "$LIB" && unzip -q -o -j "$HALO_JAR" \
+    "BOOT-INF/lib/jackson-databind-2.21.5.jar" "BOOT-INF/lib/jackson-core-2.21.5.jar" "BOOT-INF/lib/jackson-annotations-2.21.jar" \
+    "BOOT-INF/lib/spring-data-commons-*.jar")
+fi
+
 # javac 的参数全部写进 @argfile（每行一个，带空格的路径加引号）
 {
   echo "--release"; echo "21"; echo "-encoding"; echo "UTF-8"; echo "-nowarn"

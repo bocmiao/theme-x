@@ -20,6 +20,7 @@
       }
     );
     out.highlightCdn = raw.highlightCdn || "";
+    out.linkCards = raw.linkCards === "on";
     var ep = raw.epic || {};
     // 勾选框存的是数组；只认这三个值，顺序固定，一个都没勾就当只勾了 Epic（老配置里没有这一项）
     var plats = Array.isArray(ep.platforms) ? ep.platforms : typeof ep.platforms === "string" ? ep.platforms.split(",") : [];
@@ -54,7 +55,12 @@
     bookmarks: "x:bookmarks",
     follow: "x:follow:",
     searchCache: "x:posts-cache",
-    epic: "x:epic"
+    epic: "x:epic",
+    hot: "x:hot",
+    hotTab: "x:hot-tab",
+    history: "x:history",
+    linkMeta: "x:link-meta",
+    hint: "x:hint:"
   };
 
   var root = document.documentElement;
@@ -587,6 +593,7 @@
     var API = "/apis/api.link.halo.run/v1alpha1/link-applications";
     var challenge = "";
     var busy = false;
+    var filled = {}; // 自动填进去的值：访客没改过的，换了网址可以再换
 
     function say(text, kind) {
       if (!msg) return;
@@ -614,6 +621,41 @@
             throw err;
           });
       });
+    }
+
+    function autofill() {
+      var input = form && form.elements.url;
+      var href = input && safeHref(input.value.trim());
+      if (!href) return;
+      miaoGet("webmeta?url=" + encodeURIComponent(href)).then(
+        function (d) {
+          d = d || {};
+          var host = "";
+          try {
+            host = new URL(d.url || href).hostname.replace(/^www\./, "");
+          } catch (e) {}
+          // 网站没写站点名时接口会拿域名顶上，那还不如用网页标题
+          var site = epicText(d.siteName, 60);
+          var name = site && site.replace(/^www\./, "") !== host ? site : epicText(d.title, 60);
+          var n = [put("displayName", name), put("description", epicText(d.description, 120)), put("logo", epicCover(d.favicon))].filter(Boolean).length;
+          if (n) say(t("js.applyAutofilled", "已经按你网站上的信息填好了，不对的地方直接改。"), "info");
+        },
+        function () {}
+      );
+    }
+
+    // 空着的，或者上次是自动填的、访客没动过，才填
+    function put(name, value) {
+      var el = form.elements[name];
+      if (!el || !value) return false;
+      if (el.value.trim() && el.value !== filled[name]) return false;
+      el.value = value;
+      filled[name] = value;
+      return true;
+    }
+
+    if (form && box.getAttribute("data-apply-autofill") === "on" && form.elements.url && window.fetch && window.URL) {
+      on(form.elements.url, "change", autofill);
     }
 
     function loadCaptcha() {
@@ -3409,6 +3451,441 @@
     );
   }
 
+  /* ------------------------------------------------ api.miao.club 小功能
+     右栏热榜、历史上的今天、发帖框里的一句话、正文里的链接卡片、友链申请自动填写。
+     主题没有服务端，都是访客的浏览器直接去拿；每一项默认都关着，站长在设置里自己打开。
+     返回的东西一律当不可信数据：文字只用 textContent 写，链接只认 http(s)，图片只认 https。
+     匿名额度是每个访客 IP 每天 100 次，所以每一项都在本地缓存，一个访客一天也就请求几次。 */
+  var MIAO = "https://api.miao.club/api/";
+
+  // { code: 200, data } 信封 → data；别的 code（限流、上游挂了）都当失败
+  function miaoGet(path) {
+    return epicFetch(MIAO + path).then(function (json) {
+      if (!json || Number(json.code) !== 200) throw new Error("api code " + (json && json.code));
+      return json.data;
+    });
+  }
+
+  function safeHref(u) {
+    try {
+      var url = new URL(String(u));
+      return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // 本地缓存：{ t: 存的时间, k: 存的时候的设置, v: 数据 }。设置变了（k 对不上）就当没有
+  function cacheRead(key, k) {
+    try {
+      var c = JSON.parse(store(key) || "null");
+      if (c && c.k === k && typeof c.t === "number") return c;
+    } catch (e) {}
+    return null;
+  }
+  function cacheWrite(key, k, v) {
+    store(key, JSON.stringify({ t: Date.now(), k: k, v: v }));
+  }
+
+  // 窄屏上右栏整个不显示，里面的卡片就别去拿数据了（省访客的额度）
+  function asideHidden(el) {
+    var aside = el.closest(".x-aside");
+    return !!aside && getComputedStyle(aside).display === "none";
+  }
+
+  function outLink(el, href) {
+    el.href = href;
+    el.target = "_blank";
+    el.rel = "noopener noreferrer";
+    return el;
+  }
+
+  /* ---- 右栏热榜：「有什么新鲜事」卡片选了「全网热榜」时 */
+  var HOT = {
+    weibo: { name: "微博", home: "https://s.weibo.com/top/summary" },
+    zhihu: { name: "知乎", home: "https://www.zhihu.com/hot" },
+    bilibili: { name: "B 站", home: "https://www.bilibili.com/v/popular/all" },
+    douyin: { name: "抖音", home: "https://www.douyin.com/hot" },
+    baidu: { name: "百度", home: "https://top.baidu.com/board?tab=realtime" },
+    toutiao: { name: "头条", home: "https://www.toutiao.com/" },
+    github: { name: "GitHub", home: "https://github.com/trending" },
+    v2ex: { name: "V2EX", home: "https://www.v2ex.com/?tab=hot" },
+    ithome: { name: "IT之家", home: "https://www.ithome.com/" },
+    "36kr": { name: "36氪", home: "https://36kr.com/" },
+    sspai: { name: "少数派", home: "https://sspai.com/" },
+    hackernews: { name: "Hacker News", home: "https://news.ycombinator.com/" }
+  };
+
+  // 接口原样的一条 → 只留要用的字段（存进 localStorage 的也是这个）
+  function hotClean(src) {
+    var items = (src.items || []).map(function (it) {
+      it = it || {};
+      var x = it.extra || {};
+      return {
+        rank: Number(it.rank) || 0,
+        title: epicText(it.title, 120),
+        url: safeHref(it.url),
+        hot: typeof it.hot === "number" ? it.hot : null,
+        tag: epicText(src.source === "toutiao" ? x.label : x.label || (src.source === "weibo" ? x.category : ""), 8),
+        author: epicText(x.author || x.by, 30),
+        lang: epicText(x.language, 20),
+        node: epicText(x.node, 20),
+        comments: typeof x.comments === "number" ? x.comments : null,
+        time: typeof x.time === "string" ? x.time : ""
+      };
+    });
+    return {
+      source: src.source,
+      title: epicText(src.title, 30),
+      items: items.filter(function (it) {
+        return it.title;
+      })
+    };
+  }
+
+  // 每个来源的「热度」怎么说
+  function hotMetric(source, it) {
+    var n = it.hot == null ? "" : formatCount(it.hot);
+    var parts;
+    switch (source) {
+      case "weibo":
+        parts = [n && t("js.hotSearches", "{0} 搜索", n)];
+        break;
+      case "bilibili":
+        parts = [n && t("js.hotPlays", "{0} 播放", n), it.author];
+        break;
+      case "github":
+        parts = [it.lang, n && t("js.hotStars", "今日 +{0} 星", n)];
+        break;
+      case "v2ex":
+        parts = [it.node, n && t("js.hotReplies", "{0} 回复", n)];
+        break;
+      case "hackernews":
+        parts = [n && t("js.hotPoints", "{0} 分", n), it.comments != null && t("js.hotComments", "{0} 评论", formatCount(it.comments))];
+        break;
+      case "ithome":
+      case "36kr":
+      case "sspai":
+        parts = [it.author, it.time && relativeTime(it.time)];
+        break;
+      default:
+        parts = [n && t("js.hotHeat", "{0} 热度", n)];
+    }
+    return parts.filter(Boolean).join(" · ");
+  }
+
+  function hotRow(src, it) {
+    var row = it.url ? outLink(node("a", "x-card-row x-hot-row"), it.url) : node("div", "x-card-row x-hot-row");
+    var main = node("div", "x-card-row-main");
+    var label = node("div", "x-card-row-label", it.rank + " · " + src.title);
+    if (it.tag) {
+      label.appendChild(document.createTextNode(" · "));
+      label.appendChild(node("span", "x-hot-tag", it.tag));
+    }
+    main.appendChild(label);
+    main.appendChild(node("div", "x-card-row-title", it.title));
+    var metric = hotMetric(src.source, it);
+    if (metric) main.appendChild(node("div", "x-card-row-label", metric));
+    row.appendChild(main);
+    return row;
+  }
+
+  function initHot() {
+    unbound($$("[data-hot]"), "hot").forEach(function (card) {
+      var wanted = (card.getAttribute("data-hot-sources") || "").split(",").filter(function (id) {
+        return HOT.hasOwnProperty(id);
+      });
+      if (!wanted.length || !window.fetch || asideHidden(card)) return;
+      var count = Math.max(1, Math.min(20, Number(card.getAttribute("data-hot-count")) || 6));
+      var tabs = $("[data-hot-tabs]", card);
+      var list = $("[data-hot-list]", card);
+      var more = $("[data-hot-more]", card);
+      var k = wanted.join(",") + "|" + count;
+
+      function render(sources) {
+        sources = (sources || []).filter(function (src) {
+          return src && wanted.indexOf(src.source) >= 0 && src.items && src.items.length;
+        });
+        if (!sources.length) {
+          card.hidden = true;
+          return;
+        }
+        var active = store(KEY.hotTab);
+        var cur = sources.filter(function (src) {
+          return src.source === active;
+        })[0] || sources[0];
+
+        tabs.textContent = "";
+        tabs.hidden = sources.length < 2;
+        sources.forEach(function (src) {
+          var b = node("button", "x-hot-tab", HOT[src.source].name);
+          b.type = "button";
+          b.setAttribute("role", "tab");
+          b.setAttribute("aria-selected", src === cur ? "true" : "false");
+          on(b, "click", function () {
+            store(KEY.hotTab, src.source);
+            render(sources);
+          });
+          tabs.appendChild(b);
+        });
+
+        list.textContent = "";
+        cur.items.slice(0, count).forEach(function (it) {
+          list.appendChild(hotRow(cur, it));
+        });
+        if (more) outLink(more, HOT[cur.source].home);
+        card.hidden = false;
+      }
+
+      // 热榜接口自己缓存 5 分钟，这边 10 分钟内不重复拿；过期的先照样画出来，拿到新的再换
+      var cached = cacheRead(KEY.hot, k);
+      if (cached) render(cached.v);
+      if (cached && Date.now() - cached.t < 10 * 60000) return;
+      miaoGet("hot/all?sources=" + wanted.join(",") + "&limit=" + count).then(
+        function (data) {
+          var sources = ((data && data.sources) || []).map(hotClean);
+          cacheWrite(KEY.hot, k, sources);
+          render(sources);
+        },
+        function () {
+          if (!cached) card.hidden = true;
+        }
+      );
+    });
+  }
+
+  /* ---- 右栏「历史上的今天」 */
+  function beijingDay() {
+    return new Date(Date.now() + 8 * 3600000).toISOString().slice(5, 10);
+  }
+
+  function historyRow(ev) {
+    var row = ev.link ? outLink(node("a", "x-card-row"), ev.link) : node("div", "x-card-row");
+    var main = node("div", "x-card-row-main");
+    var kind = { birth: t("js.historyBirth", "出生"), death: t("js.historyDeath", "逝世") }[ev.type] || t("js.historyEvent", "事件");
+    main.appendChild(node("div", "x-card-row-label", (ev.year ? ev.year + " · " : "") + kind));
+    main.appendChild(node("div", "x-card-row-title", ev.title));
+    if (ev.desc) row.title = ev.desc;
+    row.appendChild(main);
+    return row;
+  }
+
+  function initHistory() {
+    unbound($$("[data-history]"), "history").forEach(function (card) {
+      if (!window.fetch || asideHidden(card)) return;
+      var count = Math.max(1, Math.min(20, Number(card.getAttribute("data-history-count")) || 4));
+      var list = $("[data-history-list]", card);
+      var more = $("[data-history-more]", card);
+      var day = beijingDay();
+      var open = false;
+
+      function render(events) {
+        // 近的在前：离现在越近越有话题
+        events = (events || []).slice().sort(function (a, b) {
+          return (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0);
+        });
+        if (!events.length) {
+          card.hidden = true;
+          return;
+        }
+        list.textContent = "";
+        (open ? events : events.slice(0, count)).forEach(function (ev) {
+          list.appendChild(historyRow(ev));
+        });
+        if (more) {
+          more.hidden = events.length <= count;
+          more.textContent = open ? t("js.showLess", "收起") : t("js.showMore", "显示更多");
+          more.onclick = function () {
+            open = !open;
+            render(events);
+          };
+        }
+        card.hidden = false;
+      }
+
+      // 一天只拿一次：缓存按北京时间的「月-日」记
+      var cached = cacheRead(KEY.history, day);
+      if (cached) return render(cached.v);
+      miaoGet("history/today").then(
+        function (data) {
+          var events = ((data && data.events) || [])
+            .map(function (ev) {
+              ev = ev || {};
+              return {
+                year: epicText(ev.year, 8),
+                title: epicText(ev.title, 80),
+                desc: epicText(ev.desc, 160),
+                type: ev.type === "birth" || ev.type === "death" ? ev.type : "event",
+                link: safeHref(ev.link)
+              };
+            })
+            .filter(function (ev) {
+              return ev.title;
+            });
+          cacheWrite(KEY.history, day, events);
+          render(events);
+        },
+        function () {
+          card.hidden = true;
+        }
+      );
+    });
+  }
+
+  /* ---- 发帖框里的一句话：一言 / 古诗词。一次浏览（关掉标签页之前）只换一次 */
+  function initComposeHint() {
+    unbound($$("[data-compose-hint]"), "hint").forEach(function (field) {
+      var mode = field.getAttribute("data-compose-hint");
+      if ((mode !== "hitokoto" && mode !== "poem") || !window.fetch) return;
+      if (!field.offsetParent) return; // 博客视图里发帖框藏着，不白拿
+
+      function show(q) {
+        if (!q || !q.text) return;
+        field.textContent = q.text;
+        if (q.from) field.appendChild(node("span", "x-compose-from", "—— " + q.from));
+        field.title = q.text + (q.from ? " —— " + q.from : "");
+      }
+
+      var key = KEY.hint + mode;
+      var saved = null;
+      try {
+        saved = JSON.parse(session(key) || "null");
+      } catch (e) {}
+      if (saved) return show(saved);
+      // 一言只要动画、漫画、文学、影视、诗词、哲学这几类，抖机灵和网易云评论不太适合放在这
+      miaoGet(mode === "poem" ? "poem" : "hitokoto?type=a,b,d,h,i,k").then(
+        function (d) {
+          d = d || {};
+          var q =
+            mode === "poem"
+              ? { text: epicText(d.content, 80), from: epicText([d.author, d.title && "《" + d.title + "》"].filter(Boolean).join(" "), 40) }
+              : { text: epicText(d.hitokoto, 80), from: epicText([d.fromWho, d.from && "《" + d.from + "》"].filter(Boolean).join(" "), 40) };
+          session(key, JSON.stringify(q));
+          show(q);
+        },
+        function () {}
+      );
+    });
+  }
+
+  /* ---- 正文里的链接卡片：单独占一段的链接，换成 X 那样带标题、摘要、配图的卡片 */
+  var META_TTL = 7 * 86400000;
+  var META_FAIL_TTL = 86400000;
+
+  function metaCache(url, value) {
+    var all = {};
+    try {
+      all = JSON.parse(store(KEY.linkMeta) || "{}") || {};
+    } catch (e) {}
+    if (value === undefined) {
+      var hit = all[url];
+      return hit && Date.now() - hit.t < (hit.d ? META_TTL : META_FAIL_TTL) ? hit : null;
+    }
+    all[url] = { t: Date.now(), d: value };
+    // 最多记 60 条，多了扔最旧的
+    var keys = Object.keys(all).sort(function (a, b) {
+      return all[b].t - all[a].t;
+    });
+    keys.slice(60).forEach(function (k) {
+      delete all[k];
+    });
+    store(KEY.linkMeta, JSON.stringify(all));
+    return null;
+  }
+
+  function linkMeta(url) {
+    var hit = metaCache(url);
+    if (hit) return Promise.resolve(hit.d);
+    return miaoGet("webmeta?url=" + encodeURIComponent(url)).then(
+      function (d) {
+        d = d || {};
+        var host = "";
+        try {
+          host = new URL(d.url || url).hostname.replace(/^www\./, "");
+        } catch (e) {}
+        var meta = d.title
+          ? {
+              title: epicText(d.title, 120),
+              desc: epicText(d.description, 200),
+              image: epicCover(d.image),
+              icon: epicCover(d.favicon),
+              site: host
+            }
+          : null;
+        metaCache(url, meta);
+        return meta;
+      },
+      function () {
+        // 打不开的网页一天之内别再问了
+        metaCache(url, null);
+        return null;
+      }
+    );
+  }
+
+  function linkCard(a, m) {
+    var card = node("a", "x-linkcard" + (m.image ? " x-linkcard--large" : ""));
+    card.href = a.href;
+    if (card.origin !== location.origin) {
+      card.target = "_blank";
+      card.rel = "noopener noreferrer";
+    }
+    var src = m.image || m.icon;
+    if (src) {
+      var media = node("span", "x-linkcard-media" + (m.image ? "" : " is-icon"));
+      var img = node("img");
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      on(img, "error", function () {
+        // 大图挂了退回网站图标（变成小卡片），图标也挂了就只留文字
+        if (m.image && m.icon && img.src !== m.icon) {
+          card.classList.remove("x-linkcard--large");
+          media.classList.add("is-icon");
+          img.src = m.icon;
+        } else {
+          media.remove();
+        }
+      });
+      img.src = src;
+      media.appendChild(img);
+      card.appendChild(media);
+    }
+    var body = node("span", "x-linkcard-body");
+    if (m.site) body.appendChild(node("span", "x-linkcard-site", m.site));
+    body.appendChild(node("span", "x-linkcard-title", m.title));
+    if (m.desc) body.appendChild(node("span", "x-linkcard-desc", m.desc));
+    card.appendChild(body);
+    return card;
+  }
+
+  function initLinkCards() {
+    if (!CFG.linkCards || !window.fetch || !window.URL) return;
+    var picks = [];
+    unbound($$("[data-prose]"), "linkcards").forEach(function (prose) {
+      $$("p > a[href]", prose).forEach(function (a) {
+        var p = a.parentNode;
+        // 只认「这一段就只有这一个链接」：段落里还有别的字、别的元素，或者链接包着图片，都不动
+        if (picks.length >= 8 || p.children.length !== 1 || p.textContent.trim() !== a.textContent.trim() || a.querySelector("img")) return;
+        var href = safeHref(a.href);
+        if (!href || /\.(png|jpe?g|gif|webp|avif|svg|pdf|zip|rar|7z|mp3|mp4|mov)([?#]|$)/i.test(href)) return;
+        var u = new URL(href);
+        if (u.origin === location.origin && u.pathname === location.pathname) return; // 本页锚点
+        u.hash = "";
+        picks.push({ p: p, a: a, url: u.href });
+      });
+    });
+    // 一个一个来：接口每分钟也有次数限制
+    picks.reduce(function (prev, pick) {
+      return prev.then(function () {
+        return linkMeta(pick.url).then(function (m) {
+          if (m && pick.p.isConnected) pick.p.replaceWith(linkCard(pick.a, m));
+        });
+      });
+    }, Promise.resolve());
+  }
+
   /* --------------------------------------------- 吸顶层的实际高度 */
   /* 页头高度会随标签页、窄屏顶栏变化，量出来写进 --header-h，
      归档组头、新帖提示、锚点跳转都靠它对齐，不用在 CSS 里猜死数字 */
@@ -3983,6 +4460,10 @@
     initInfinite,
     initNewPosts,
     initEpic,
+    initHot,
+    initHistory,
+    initComposeHint,
+    initLinkCards,
     initTip,
     syncFeedStyle,
     initLinkApply,

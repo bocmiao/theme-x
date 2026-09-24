@@ -681,6 +681,231 @@
     }
   });
 
+  /* ---------------------------------------------------------------- 友链体检
+     后端（LinkHealthService）按设置定时用 api.miao.club 查一遍所有友链，报告存在 ConfigMap 里。
+     这页只负责把报告摆出来，再给一个「立即检查」。 */
+  var HEALTH = "/apis/console.api.themexupdater.halo.run/v1alpha1/linkhealth";
+
+  function when(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    var diff = (Date.now() - d.getTime()) / 1000;
+    if (diff >= 0 && diff < 60) return "刚刚";
+    if (diff >= 0 && diff < 3600) return Math.floor(diff / 60) + " 分钟前";
+    if (diff >= 0 && diff < 86400) return Math.floor(diff / 3600) + " 小时前";
+    if (diff >= 0 && diff < 86400 * 30) return Math.floor(diff / 86400) + " 天前";
+    return d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  function clock(iso) {
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? "" : d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+
+  var LinkHealthPage = Vue.defineComponent({
+    name: "ThemeXLinkHealth",
+    setup: function () {
+      var data = Vue.ref(null);
+      var loading = Vue.ref(true);
+      var failed = Vue.ref("");
+      var timer = null;
+
+      function load() {
+        return ax()
+          .get(HEALTH)
+          .then(function (r) {
+            data.value = r.data || {};
+            failed.value = "";
+          })
+          .catch(function (e) {
+            failed.value = errorText(e);
+          })
+          .then(function () {
+            loading.value = false;
+            // 正在查的时候每 3 秒刷一下进度
+            clearTimeout(timer);
+            if (data.value && data.value.running) timer = setTimeout(load, 3000);
+          });
+      }
+
+      function checkNow() {
+        return ax()
+          .post(HEALTH + "/check")
+          .then(function () {
+            C.Toast.success("开始检查了，友链多的话要几分钟，这页会自己刷新");
+            setTimeout(load, 800);
+          })
+          .catch(function (e) {
+            C.Toast.error((e && e.response && e.response.status === 409) ? "正在检查，等这一轮查完" : "没能开始：" + errorText(e));
+          });
+      }
+
+      Vue.onMounted(load);
+      Vue.onBeforeUnmount(function () {
+        clearTimeout(timer);
+      });
+
+      // 每条友链归一类：失联 > 打不开 > 跳走了 > 还没查 / 查不了 > 正常
+      function classify(e, threshold) {
+        var fails = e.fails || 0;
+        if (e.state === "fail" && fails >= threshold) return { rank: 0, color: "#dc2626", label: "失联", note: "连续 " + fails + " 次打不开" };
+        if (e.state === "fail" || fails > 0) return { rank: 1, color: "#b45309", label: "打不开", note: "第 " + fails + " 次，连续 " + threshold + " 次才算失联" };
+        if (e.state === "moved") return { rank: 2, color: "#b45309", label: "跳到了别的网站", note: "域名可能过期被停放，或者整站搬家了，点开看看" };
+        if (e.state === "pending") return { rank: 3, color: "#6b7280", label: "还没查", note: "" };
+        if (e.state === "skip") return { rank: 3, color: "#6b7280", label: "查不了", note: "" };
+        var bits = [];
+        if (e.status) bits.push("HTTP " + e.status);
+        if (e.ms != null) bits.push((e.ms / 1000).toFixed(e.ms < 10000 ? 2 : 1) + " 秒");
+        return { rank: 4, color: "#15803d", label: "正常", note: bits.join(" · ") };
+      }
+
+      function rows() {
+        var d = data.value || {};
+        var threshold = (d.settings && d.settings.threshold) || 3;
+        var map = d.links || {};
+        return Object.keys(map)
+          .map(function (k) {
+            var e = map[k];
+            return { e: e, c: classify(e, threshold) };
+          })
+          .sort(function (a, b) {
+            return a.c.rank - b.c.rank || (b.e.fails || 0) - (a.e.fails || 0) || String(a.e.title).localeCompare(String(b.e.title), "zh-CN");
+          });
+      }
+
+      function boxStyle(color) {
+        return (
+          "padding:12px 16px;border-radius:8px;font-size:13px;line-height:1.7;margin-bottom:12px;" +
+          "background:" + color + "14;color:" + color
+        );
+      }
+
+      function summary() {
+        var d = data.value || {};
+        var s = d.settings || {};
+        var parts = [];
+        parts.push(
+          s.enabled
+            ? "每 " + s.intervalHours + " 小时自动查一次，连续 " + s.threshold + " 次打不开算失联；" +
+                (s.hasKey ? "用的是你的 API Key。" : "没填 API Key，用的是匿名额度（每天 100 次，一轮最多查 90 条）。")
+            : "定时检查关着，只能手动点「立即检查」。"
+        );
+        parts.push("在「插件 → theme-x 助手 → 设置」里改。");
+        var lines = [h("div", null, parts.join(""))];
+        if (d.running) {
+          lines.push(h("div", { style: "font-weight:600" }, "正在检查：" + (d.done || 0) + " / " + (d.todo || "?")));
+        } else if (d.finishedAt) {
+          lines.push(
+            h("div", null,
+              "上次检查：" + clock(d.finishedAt) + "（" + (d.trigger === "manual" ? "手动" : "定时") + "，查了 " + (d.checked || 0) + " 条）" +
+                (d.nextAt ? "，下次大约 " + clock(d.nextAt) : ""))
+          );
+        } else {
+          lines.push(h("div", null, s.enabled ? "还没查过。插件启动后几分钟内会自动查第一遍，也可以直接点「立即检查」。" : "还没查过。"));
+        }
+        return h("div", { style: boxStyle("#2563eb") }, lines);
+      }
+
+      function counts(list) {
+        var n = [0, 0, 0, 0, 0];
+        list.forEach(function (r) {
+          n[r.c.rank]++;
+        });
+        var chips = [
+          ["失联", n[0], "#dc2626"],
+          ["打不开", n[1], "#b45309"],
+          ["跳走了", n[2], "#b45309"],
+          ["正常", n[4], "#15803d"],
+          ["没查 / 查不了", n[3], "#6b7280"]
+        ].filter(function (c) {
+          return c[1] > 0;
+        });
+        return h(
+          "div",
+          { style: "display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;font-size:13px" },
+          chips.map(function (c) {
+            return h("span", { style: "padding:2px 10px;border-radius:999px;background:" + c[2] + "14;color:" + c[2] + ";font-weight:600" }, c[0] + " " + c[1]);
+          })
+        );
+      }
+
+      function row(r) {
+        var e = r.e;
+        var c = r.c;
+        var detail = e.detail && c.rank !== 4 ? e.detail : "";
+        return h(
+          "div",
+          { style: "display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #eaecf0;font-size:13px" },
+          [
+            h("div", { style: "flex:1;min-width:0" }, [
+              h("div", { style: "font-weight:600;color:#111827" }, e.title || e.name),
+              e.url
+                ? h("a", { href: e.url, target: "_blank", rel: "noopener noreferrer", style: "color:#6b7280;word-break:break-all" }, e.url)
+                : h("span", { style: "color:#9ca3af" }, "没填网站地址")
+            ]),
+            h("div", { style: "flex:1.2;min-width:0" }, [
+              h("div", null, [
+                h("span", { style: "font-weight:600;color:" + c.color }, c.label),
+                c.note ? h("span", { style: "color:#6b7280" }, " · " + c.note) : null
+              ]),
+              detail ? h("div", { style: "color:#374151;word-break:break-all" }, detail) : null
+            ]),
+            h("div", { style: "flex:0 0 170px;color:#6b7280;line-height:1.6" }, [
+              h("div", null, e.lastOk ? "上次正常：" + when(e.lastOk) : e.checkedAt ? "还没打开过" : ""),
+              e.checkedAt ? h("div", null, "查于 " + when(e.checkedAt)) : null
+            ])
+          ]
+        );
+      }
+
+      return function () {
+        var d = data.value || {};
+        var list = data.value ? rows() : [];
+        return h("div", null, [
+          h(C.VPageHeader, { title: "友链体检" }, {
+            icon: function () {
+              return h(C.IconLink);
+            },
+            actions: function () {
+              return h(C.VSpace, null, function () {
+                return [
+                  h(C.VButton, { size: "sm", onClick: function () { load(); } }, function () {
+                    return "刷新";
+                  }),
+                  h(
+                    C.VButton,
+                    { size: "sm", type: "secondary", loading: !!d.running, disabled: !!d.running, onClick: checkNow },
+                    function () {
+                      return d.running ? "检查中" : "立即检查";
+                    }
+                  )
+                ];
+              });
+            }
+          }),
+          h("div", { style: "margin:16px" }, [
+            failed.value ? h("div", { style: boxStyle("#dc2626") }, "读不到报告：" + failed.value) : null,
+            data.value ? summary() : null,
+            d.error ? h("div", { style: boxStyle("#b45309") }, d.error) : null,
+            h("div", { style: "background:#fff;border-radius:8px;outline:1px solid #eaecf0;overflow:hidden" }, [
+              h(
+                "div",
+                { style: "padding:12px 16px;font-size:13px;color:#6b7280;line-height:1.6" },
+                "用 api.miao.club 的「网站可用性检测」从外面访问每个友链。只出报告，不改友链、不影响前台；" +
+                  "检测服务器在国内，连 GitHub Pages 这类站偶尔会超时，所以偶尔一次打不开别急，连续几次都不行再去联系对方或者删掉。"
+              ),
+              loading.value
+                ? h("div", { style: "padding:24px" }, [h(C.VLoading)])
+                : list.length
+                  ? h("div", null, [counts(list)].concat(list.map(row)))
+                  : h("div", { style: "padding:24px;text-align:center;color:#6b7280;font-size:13px" }, d.finishedAt ? "还没有友链" : "还没有报告")
+            ])
+          ])
+        ]);
+      };
+    }
+  });
+
   /* ---------------------------------------------------------------- 进后台时的提示 */
   function canManageThemes() {
     try {
@@ -725,6 +950,20 @@
             searchable: true,
             permissions: ["plugin:links:manage"],
             menu: { name: "友链 RSS", group: "content", icon: Vue.markRaw(C.IconLink), priority: 52 }
+          }
+        }
+      },
+      {
+        parentName: "Root",
+        route: {
+          path: "/theme-x/links-health",
+          name: "ThemeXLinkHealth",
+          component: Vue.markRaw(LinkHealthPage),
+          meta: {
+            title: "友链体检",
+            searchable: true,
+            permissions: ["plugin:links:manage"],
+            menu: { name: "友链体检", group: "content", icon: Vue.markRaw(C.IconLink), priority: 53 }
           }
         }
       }

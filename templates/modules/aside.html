@@ -8,7 +8,9 @@
              trendsMode=${sb?.trends ?: ('tag')},
              trendsRaw=${#conversions.convert(sb?.trends_count ?: (6), 'java.lang.Integer')},
              trendsCount=${trendsRaw < 1 ? 1 : trendsRaw},
-             follow=${sb?.sticky_widgets ?: ({'promo','trends','follow','epic','footer'})},
+             follow=${sb?.sticky_widgets ?: ({'promo','trends','follow','epic','history','footer'})},
+             histFollow=${#lists.contains(follow, 'history') or #lists.containsAll(follow, {'promo','trends','follow','epic','footer'})},
+             hotSources=${#lists.isEmpty(sb?.trends_hot) ? ({'weibo','zhihu','bilibili','ithome'}) : sb.trends_hot},
              promoLinkRaw=${#strings.trim(sb?.promo_link ?: '')}, promoLink=${#strings.isEmpty(promoLinkRaw) ? '/rss.xml' : (#strings.startsWith(promoLinkRaw, '/') or #strings.startsWith(promoLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(promoLinkRaw), 'sms:') ? promoLinkRaw : 'https://' + promoLinkRaw)},
              epicMoreRaw=${#strings.trim(ep?.more_link ?: '')}, epicMore=${#strings.isEmpty(epicMoreRaw) ? (#lists.size(plats) > 1 ? null : (plats[0] == 'steam' ? 'https://store.steampowered.com/search/?maxprice=free&specials=1' : (plats[0] == 'gog' ? 'https://www.gog.com/zh/games?priceRange=0,0&discounted=true' : 'https://store.epicgames.com/free-games'))) : (#strings.startsWith(epicMoreRaw, '/') or #strings.startsWith(epicMoreRaw, '#') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(epicMoreRaw), 'sms:') ? epicMoreRaw : 'https://' + epicMoreRaw)}"
   >
@@ -59,7 +61,7 @@
       <!--/* 趋势：标签或分类按文章数排。顺序交给 JS 排，模板只管把数字带出去 */-->
       <section
         class="x-card"
-        th:if="${trendsMode != 'off'}"
+        th:if="${trendsMode != 'off' and trendsMode != 'hot'}"
         th:classappend="${#lists.contains(follow, 'trends')} ? 'is-follow'"
         data-trends
         th:attr="data-trends-count=${trendsCount}"
@@ -127,6 +129,22 @@
         ></a>
       </section>
 
+      <!--/* 全网热榜：数据由访客浏览器去 api.miao.club 拿（theme.js 的 initHot），拿到之前和拿不到的时候整块不出现。
+             勾了不止一个来源时，标题下面是一排来源按钮，访客点哪个看哪个（记在访客浏览器里） */-->
+      <section
+        class="x-card x-hot"
+        th:if="${trendsMode == 'hot'}"
+        th:classappend="${#lists.contains(follow, 'trends')} ? 'is-follow'"
+        data-hot
+        th:attr="data-hot-sources=${#strings.listJoin(hotSources, ',')}, data-hot-count=${trendsCount}"
+        hidden
+      >
+        <h2 class="x-card-title" th:text="${sb?.trends_title ?: (#messages.msg('default.trendsTitle'))}"></h2>
+        <div class="x-hot-tabs" role="tablist" data-hot-tabs hidden></div>
+        <div data-hot-list></div>
+        <a class="x-card-more" data-hot-more href="#" th:text="#{hot.more}">查看完整榜单</a>
+      </section>
+
       <!--/* 推荐关注 */-->
       <section
         class="x-card"
@@ -183,6 +201,22 @@
           th:attr="target=${#strings.isEmpty(ep?.more_link)} ? '_blank' : null, rel=${#strings.isEmpty(ep?.more_link)} ? 'noopener' : null"
           th:text="#{common.showMore}"
         >显示更多</a>
+      </section>
+
+      <!--/* 历史上的今天：同样是访客浏览器去 api.miao.club 拿（initHistory），一天拿一次。
+             「跟随滚动」列表是 1.23.0 之前存下的（里面还没有这一项），而且原来五项全勾着的，这张新卡片也算勾上，
+             不然它会因为「没勾」被排到右栏最顶上 */-->
+      <section
+        class="x-card x-history"
+        th:if="${sb?.history == 'on'}"
+        th:classappend="${histFollow} ? 'is-follow'"
+        data-history
+        th:attr="data-history-count=${sb?.history_count ?: 4}"
+        hidden
+      >
+        <h2 class="x-card-title" th:text="#{history.title}">历史上的今天</h2>
+        <div data-history-list></div>
+        <button class="x-card-more" type="button" data-history-more hidden th:text="#{common.showMore}">显示更多</button>
       </section>
 
       <!--/* 页脚 */-->

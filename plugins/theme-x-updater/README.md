@@ -1,11 +1,13 @@
 # theme-x 助手
 
-Halo 插件，给 theme-x 打配合，两件事：
+Halo 插件，给 theme-x 打配合，三件事：
 
 1. **检查主题更新**：GitHub 上的 theme-x 有新版本时在后台提示，并在「主题 → 主题管理」里给出
    「更新到 x.y.z」按钮，点一下就用 Halo 自带的「从地址升级主题」升到最新，主题设置保留。
 2. **友链 RSS 批量发现**：菜单「内容 → 友链 RSS」，一键给所有友链自动找出 RSS / Atom 地址、
    填好开启并立刻抓一次——首页那个「正在关注」标签页就靠这些数据。
+3. **友链体检**（1.2.0 起）：菜单「内容 → 友链体检」，定时用 api.miao.club 的「网站可用性检测」把友链挨个查一遍，
+   列出正常 / 打不开 / 跳到别的网站的，连续几次打不开的标成「失联」。只出报告，不改友链。
 
 怎么装、怎么用见主题的 README。
 
@@ -36,6 +38,19 @@ Halo 插件，给 theme-x 打配合，两件事：
 
 一条一条串行处理，不并发去敲别人的站；已经填过地址的只抓取、不覆盖。
 
+### 友链体检
+
+- **后端**（`LinkHealthService.java`）：一个单线程定时器，插件启动 2 分钟后第一次、之后每 20 分钟看一眼，
+  距上次查完超过「每隔几小时」就跑一轮。友链用 `indexedQueryEngine().retrieveAll(core.halo.run/v1alpha1/Link)`
+  列出名字再按 GVK 逐个 `fetch` 成 `Unstructured`——插件里没有「链接」插件的 Link 类，只能这样读。
+  每条请求 `https://api.miao.club/api/site/check?url=…`（有 Key 就带 `X-API-Key`），没 Key 时一轮最多 90 条、每条隔 3.5 秒；
+  429 / 401 / 连不上接口就停下，这一轮没查到的保留上次结果，下一轮按「最久没查」优先。
+  报告存在 ConfigMap `theme-x-link-health` 的 `report` 里：每条友链记状态、连续失败次数、第一次失败时间、最后一次正常时间。
+- **接口**（`LinkHealthEndpoint.java`）：`GET …/linkhealth` 读报告（带设置摘要、进度），`POST …/linkhealth/check` 立即查（正在查返回 409）。
+- **设置**（`extensions/settings.yaml`，分组 `linkHealth`）：开关、间隔、连续几次算失联、API Key。
+- **权限**：`roleTemplate.yaml` 把 `linkhealth` 聚合进「链接」插件的 `role-template-link-manage`，能管理友链的人才能看。
+- **前端**：路由 `/theme-x/links-health`（菜单「内容 → 友链体检」）。
+
 ## 构建
 
 需要 JDK 21 和一份 Halo 2.26 的 jar（只从里面抽编译依赖，不改它），路径在 `build.sh` 开头，可用环境变量
@@ -58,4 +73,7 @@ bash plugins/theme-x-updater/build.sh
 - `CustomEndpoint` 里的路由写相对路径，Halo 会自动挂到 `/apis/{group}/{version}/` 下面。
 - `META-INF/plugin-components.idx` 列出要注册成 Bean 的类，官方构建插件会自动生成，这里由 `build.sh` 生成。
 - Windows 上测试时，同版本号的插件 jar 被 Halo 占用，直接「升级」会 500；先卸载再装。Linux 服务器没这个问题。
+- 编译友链体检要 Jackson 2 和 spring-data-commons（`Sort`），`build.sh` 会从 Halo 的 jar 里补抽；运行时由 Halo 提供。
+  Halo 2.26 里 Jackson 2 和 3 并存，插件用的是 2（`com.fasterxml`），接口返回时自己序列化成字符串，不依赖 Halo 用哪个编解码器。
+- 在插件里阻塞调用 `client.fetch(...).block()` 只能放在自己开的线程（或 boundedElastic）里，别在 WebFlux 的事件线程里 block。
 - 「链接」插件不让抓 localhost / 内网地址（`Failed to fetch URL`），本地测试要用公网 RSS。

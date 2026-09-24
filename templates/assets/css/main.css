@@ -741,6 +741,115 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
 .x-epic-stores { display: flex; flex-wrap: wrap; gap: 8px; }
 .x-epic-source { margin: 0; padding: 16px; color: var(--text-secondary); font-size: 0.866rem; }
 
+/* 全网热榜 / 历史上的今天（数据晚到，拿不到就整块不出现） */
+.x-hot[hidden], .x-history[hidden], .x-hot-tabs[hidden] { display: none; }
+.x-hot-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.x-hot-tabs::-webkit-scrollbar { display: none; }
+.x-hot-tab {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.866rem;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease);
+}
+.x-hot-tab:hover { background: var(--hover-strong); }
+.x-hot-tab[aria-selected="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+.x-hot-tag { color: var(--accent-text); font-weight: 700; }
+.x-hot-row .x-card-row-title,
+.x-history .x-card-row-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+button.x-card-more {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.x-card-more[hidden] { display: none; }
+
+/* 发帖框里的一句话：出处另起一行，小一号 */
+.x-compose-from { display: block; margin-top: 4px; font-size: 0.8em; }
+
+/* 正文里的链接卡片：有分享图是上图下文的大卡片，没有就是左边网站图标、右边文字的小卡片 */
+.x-prose a.x-linkcard,
+.x-linkcard {
+  display: flex;
+  align-items: stretch;
+  margin: 1em 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.2s var(--ease);
+}
+.x-prose a.x-linkcard:hover { background: var(--hover); text-decoration: none; }
+.x-linkcard-media {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 128px;
+  min-height: 96px;
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--border-strong);
+}
+.x-prose .x-linkcard img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+.x-prose .x-linkcard-media.is-icon img { width: 32px; height: 32px; object-fit: contain; }
+.x-linkcard-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 12px 16px;
+  font-size: 0.933rem;
+  line-height: 1.35;
+}
+.x-linkcard-site { color: var(--text-secondary); }
+.x-linkcard-title { color: var(--text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.x-linkcard-desc {
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.x-linkcard--large { flex-direction: column; }
+.x-linkcard--large .x-linkcard-media {
+  width: 100%;
+  aspect-ratio: 1.91 / 1;
+  border-right: 0;
+  border-bottom: 1px solid var(--border-strong);
+}
+
 .x-follow-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
 .x-follow-row:hover { background: var(--hover); }
 .x-follow-meta { flex: 1; min-width: 0; }

@@ -208,6 +208,18 @@ spec:
           name: compose_placeholder
           label: 发帖框提示语
         - $formkit: select
+          name: compose_hint
+          label: 发帖框里换成一句话
+          value: "off"
+          help: 把「有什么新鲜事？」换成随机的一句一言（动漫、文学、影视、诗词、哲学）或一句古诗词，访客每次打开博客换一句。数据是访客的浏览器直接去 api.miao.club 拿的（主题没有服务端），默认关，要不要让访客连第三方由你决定。拿不到时照常显示上面的提示语。
+          options:
+            - label: 不换（用上面的提示语）
+              value: "off"
+            - label: 一言
+              value: hitokoto
+            - label: 古诗词
+              value: poem
+        - $formkit: select
           name: media_grid
           label: 封面图排版
           value: "on"
@@ -222,6 +234,16 @@ spec:
     - group: post
       label: 文章
       formSchema:
+        - $formkit: select
+          name: link_cards
+          label: 正文链接变成卡片
+          value: "off"
+          help: 正文里单独占一段的链接（这一段只有这一个链接），会变成 X 那样带标题、摘要和配图的卡片；链接夹在句子里的不动。网页信息由访客浏览器去 api.miao.club 取，在访客本地缓存 7 天。默认关，要不要让访客连第三方由你决定。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
         - $formkit: select
           name: cover_fallback
           label: 没设封面时用正文首图
@@ -423,6 +445,16 @@ spec:
           label: 申请须知
           rows: 4
           help: 显示在申请表单上方。留空则用一段默认文案（先加本站、内容健康、长期有效）
+        - $formkit: select
+          name: apply_autofill
+          label: 申请表单自动填写
+          value: "off"
+          help: 访客填好网址后，自动按对方网站上的信息填好名称、简介和头像（空着的才填，访客可以改）。网页信息由访客浏览器去 api.miao.club 取。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
 
     # ================================================================ 右栏
     - group: sidebar
@@ -467,13 +499,50 @@ spec:
           name: trends
           label: 趋势卡片
           value: "tag"
+          help: 「全网热榜」显示微博、知乎、B 站等平台此刻的热榜，数据是访客的浏览器直接去 api.miao.club 拿的（主题没有服务端），默认关，要不要让访客连第三方由你决定。
           options:
             - label: 按标签
               value: tag
             - label: 按分类
               value: category
+            - label: 全网热榜（api.miao.club）
+              value: hot
             - label: 隐藏
               value: "off"
+        - $formkit: checkbox
+          name: trends_hot
+          label: 热榜来源
+          value:
+            - weibo
+            - zhihu
+            - bilibili
+            - ithome
+          help: 趋势卡片选「全网热榜」时才用。勾了几个，卡片标题下面就有几个按钮，访客点哪个看哪个；条目数用下面的「趋势条目数」。哪个来源一时拿不到就自动不显示——接口服务器在国内，GitHub、V2EX、Hacker News 偶尔连不上。
+          options:
+            - label: 微博热搜
+              value: weibo
+            - label: 知乎热榜
+              value: zhihu
+            - label: B 站热门
+              value: bilibili
+            - label: 抖音热点
+              value: douyin
+            - label: 百度热搜
+              value: baidu
+            - label: 今日头条
+              value: toutiao
+            - label: GitHub Trending
+              value: github
+            - label: V2EX
+              value: v2ex
+            - label: IT之家
+              value: ithome
+            - label: 36氪
+              value: 36kr
+            - label: 少数派
+              value: sspai
+            - label: Hacker News
+              value: hackernews
         - $formkit: text
           name: trends_title
           label: 趋势卡标题
@@ -484,6 +553,24 @@ spec:
           max: 20
           label: 趋势条目数
           value: 6
+        - $formkit: select
+          name: history
+          label: 「历史上的今天」卡片
+          value: "off"
+          help: 右栏列出历史上今天发生的事、出生和逝世的人，点了去百度百科。数据是访客的浏览器直接去 api.miao.club 拿的（主题没有服务端），默认关，要不要让访客连第三方由你决定。一个访客一天只拿一次。
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: number
+          name: history_count
+          number: "integer"
+          min: 1
+          max: 20
+          label: 「历史上的今天」先显示几条
+          value: 4
+          help: 剩下的点「显示更多」展开。
         - $formkit: select
           name: follow
           label: 推荐关注卡片
@@ -543,6 +630,7 @@ spec:
             - trends
             - follow
             - epic
+            - history
             - footer
           options:
             - label: 订阅卡片
@@ -553,8 +641,12 @@ spec:
               value: follow
             - label: 游戏限免
               value: epic
+            - label: 历史上的今天
+              value: history
             - label: 页脚
               value: footer
+
+    # （「历史上的今天」卡片的开关放在「右栏」分组里，和其它右栏卡片在一起）
 
     # ================================================================ 游戏限免（配置键沿用 epic，老配置不用迁移）
     - group: epic
