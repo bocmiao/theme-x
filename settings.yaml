@@ -551,31 +551,45 @@ spec:
               value: trends
             - label: 推荐关注
               value: follow
-            - label: Epic 限免
+            - label: 游戏限免
               value: epic
             - label: 页脚
               value: footer
 
-    # ================================================================ Epic 限免
+    # ================================================================ 游戏限免（配置键沿用 epic，老配置不用迁移）
     - group: epic
-      label: Epic 限免
+      label: 游戏限免
       formSchema:
         - $formkit: select
           name: enabled
-          label: 右栏「Epic 限免」卡片
+          label: 右栏「游戏限免」卡片
           value: "off"
-          help: 展示 Epic Games Store 本周免费领取的游戏。默认关闭——数据是访客的浏览器直接去下面那个接口取的（Epic 官方接口不允许跨域，主题没有服务端，只能这么拿），要不要让访客连第三方由你决定。拿不到数据时卡片自动不出现。
+          help: 展示 Epic / Steam / GOG 上限时免费领取的游戏。默认关闭——数据是访客的浏览器直接去接口取的（这些商店的接口不允许跨域，主题没有服务端，只能这么拿），要不要让访客连第三方由你决定。拿不到数据时卡片自动不出现。
           options:
             - label: 显示
               value: "on"
             - label: 隐藏
               value: "off"
+        - $formkit: checkbox
+          name: platforms
+          label: 显示哪些平台
+          value:
+            - epic
+          help: 可以多选。Epic 每周四换一批，几乎每周都有；Steam 和 GOG 的限免隔一阵子才有一次，没有的时候卡片里就只显示有的那几家。Steam 和 GOG 的数据来自 api.miao.club；下面的「Epic 数据接口」只管 Epic。
+          options:
+            - label: Epic Games Store
+              value: epic
+            - label: Steam
+              value: steam
+            - label: GOG
+              value: gog
         - $formkit: text
           name: title
           label: 卡片标题
+          help: 留空则按勾选的平台自动起名：只勾 Epic 叫「Epic 限免」，只勾一个别的平台叫「Steam 限免」「GOG 限免」，勾了多个叫「游戏限免」。
         - $formkit: text
           name: api
-          label: 数据接口
+          label: Epic 数据接口
           help: 留空就行——内置的第一个就是 https://api.miao.club/api/epic/free，后面还有几个公共接口兜底。想用自己部署的接口再填（要带 CORS 头；站点是 https 的话接口也必须是 https）。api.miao.club / 聚合 API、Epic 官方原始格式、60s / UAPI 三种返回格式都能识别。
         - $formkit: select
           name: fallback
@@ -598,6 +612,7 @@ spec:
           name: upcoming
           label: 显示「即将限免」
           value: "on"
+          help: 只有 Epic 会提前公布下一批，Steam 和 GOG 没有「即将限免」。
           options:
             - label: 显示
               value: "on"
@@ -614,7 +629,7 @@ spec:
         - $formkit: text
           name: more_link
           label: 「显示更多」链接
-          help: 留空则去 Epic 商店的免费游戏页。新建一个独立页面并选用「Epic 限免」模板后，可以把它的地址（例如 /epic）填在这里。
+          help: 留空时，只勾了一个平台就去那家商店的限免页；勾了多个平台就不显示这个链接。新建一个独立页面并选用「游戏限免」模板后，可以把它的地址（例如 /epic）填在这里。
 
     # ================================================================ 外观
     - group: style

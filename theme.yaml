@@ -12,7 +12,7 @@ spec:
   issues: https://github.com/bocmiao/theme-x/issues
   description: 把博客变成 X（原 Twitter）。左栏导航、中间 600px 时间线、右栏搜索与趋势，三套背景配六种强调色，无限滚动、键盘快捷键、图片灯箱一并还原。
   logo: /themes/theme-x/assets/images/logo.svg
-  version: 1.21.1
+  version: 1.22.0
   requires: ">=2.20.0"
   settingName: "theme-x-setting"
   configMapName: "theme-x-configmap"
@@ -36,8 +36,8 @@ spec:
       - name: 媒体
         description: 所有带封面的文章排成方格网格，X 个人主页的「媒体」标签
         file: page_media.html
-      - name: Epic 限免
-        description: 把 Epic 本周限免和即将限免的游戏排成时间线
+      - name: 游戏限免
+        description: 把 Epic / Steam / GOG 的限免游戏排成时间线（平台在「主题设置 → 游戏限免」里勾）
         file: page_epic.html
     category:
       - name: 系列

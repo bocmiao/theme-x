@@ -738,6 +738,7 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
   animation: x-spin 0.8s linear infinite;
 }
 @keyframes x-spin { to { transform: rotate(360deg); } }
+.x-epic-stores { display: flex; flex-wrap: wrap; gap: 8px; }
 .x-epic-source { margin: 0; padding: 16px; color: var(--text-secondary); font-size: 0.866rem; }
 
 .x-follow-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }

@@ -1,8 +1,15 @@
 <!DOCTYPE html>
-<html th:lang="#{meta.lang}" lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<!--/* 只勾了 Epic 时文案和以前一模一样；勾了别的平台就换成不点名某一家的说法 */-->
+<html
+  th:lang="#{meta.lang}"
+  lang="zh-CN"
+  xmlns:th="http://www.thymeleaf.org"
+  th:with="plats=${#lists.isEmpty(theme.config.epic?.platforms) ? ({'epic'}) : theme.config.epic.platforms},
+           epicOnly=${#lists.size(plats) == 1 and plats[0] == 'epic'}"
+>
   <head>
     <th:block
-      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=#{desc.epic}, image=null, canonical=${singlePage.status.permalink}, type='website')}"
+      th:replace="~{modules/head :: head(title=|${singlePage.spec.title} - ${site.title}|, desc=${epicOnly} ? #{desc.epic} : #{desc.games}, image=null, canonical=${singlePage.status.permalink}, type='website')}"
     ></th:block>
   </head>
   <body>
@@ -20,16 +27,21 @@
             </button>
             <div>
               <h1 class="x-header-title" th:text="${singlePage.spec.title}"></h1>
-              <div class="x-header-sub">Epic Games Store</div>
+              <div class="x-header-sub">
+                <th:block th:each="p, st : ${plats}"
+                  ><th:block th:text="${p == 'steam' ? 'Steam' : (p == 'gog' ? 'GOG.com' : 'Epic Games Store')}"></th:block
+                  ><th:block th:unless="${st.last}"> · </th:block></th:block
+                >
+              </div>
             </div>
-            <div class="x-header-actions">
+            <div class="x-header-actions" th:if="${#lists.size(plats) == 1}">
               <a
                 class="x-icon-button"
-                href="https://store.epicgames.com/free-games"
+                th:href="${plats[0] == 'steam' ? 'https://store.steampowered.com/search/?maxprice=free&specials=1' : (plats[0] == 'gog' ? 'https://www.gog.com/zh/games?priceRange=0,0&discounted=true' : 'https://store.epicgames.com/free-games')}"
                 target="_blank"
                 rel="noopener noreferrer"
-                th:aria-label="#{epic.openStore}"
-                th:title="#{epic.openStore}"
+                th:aria-label="${#messages.msg('games.openStore', (plats[0] == 'steam' ? 'Steam' : (plats[0] == 'gog' ? 'GOG' : 'Epic')))}"
+                th:title="${#messages.msg('games.openStore', (plats[0] == 'steam' ? 'Steam' : (plats[0] == 'gog' ? 'GOG' : 'Epic')))}"
               >
                 <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
               </a>
@@ -57,27 +69,30 @@
           <div class="x-epic-state x-epic-state--empty">
             <div class="x-empty">
               <h2 th:text="#{epic.empty.title}">这周没有限免游戏</h2>
-              <p th:text="#{epic.empty.text}">Epic 通常在每周四晚上换一批，过几天再来看看。</p>
+              <p th:text="${epicOnly} ? #{epic.empty.text} : #{games.empty.text}">Epic 通常在每周四晚上换一批，过几天再来看看。</p>
             </div>
           </div>
 
           <div class="x-epic-state x-epic-state--error">
             <div class="x-empty">
               <h2 th:text="#{epic.error.title}">限免数据暂时拿不到</h2>
-              <p th:text="#{epic.error.text}">接口没有响应，可以直接去 Epic 商店的免费游戏页看。</p>
-              <a
-                class="x-btn x-btn--accent"
-                href="https://store.epicgames.com/free-games"
-                target="_blank"
-                rel="noopener noreferrer"
-                th:text="#{epic.openStore}"
-              >去 Epic 商店</a>
+              <p th:text="${epicOnly} ? #{epic.error.text} : #{games.error.text}">接口没有响应，可以直接去 Epic 商店的免费游戏页看。</p>
+              <div class="x-epic-stores">
+                <a
+                  class="x-btn x-btn--accent"
+                  th:each="p : ${plats}"
+                  th:href="${p == 'steam' ? 'https://store.steampowered.com/search/?maxprice=free&specials=1' : (p == 'gog' ? 'https://www.gog.com/zh/games?priceRange=0,0&discounted=true' : 'https://store.epicgames.com/free-games')}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  th:text="${#messages.msg('games.openStore', (p == 'steam' ? 'Steam' : (p == 'gog' ? 'GOG' : 'Epic')))}"
+                >去 Epic 商店</a>
+              </div>
             </div>
           </div>
         </div>
 
         <noscript><p class="x-epic-source" th:text="#{epic.noscript}">这个页面需要 JavaScript 才能加载限免数据。</p></noscript>
-        <p class="x-epic-source" th:text="#{epic.source}">数据来自 Epic Games Store 的公开促销信息，领取以商店页面为准。</p>
+        <p class="x-epic-source" th:text="${epicOnly} ? #{epic.source} : #{games.source}">数据来自 Epic Games Store 的公开促销信息，领取以商店页面为准。</p>
       </main>
 
       <th:block th:replace="~{modules/aside :: aside}"></th:block>

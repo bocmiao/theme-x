@@ -21,7 +21,13 @@
     );
     out.highlightCdn = raw.highlightCdn || "";
     var ep = raw.epic || {};
+    // 勾选框存的是数组；只认这三个值，顺序固定，一个都没勾就当只勾了 Epic（老配置里没有这一项）
+    var plats = Array.isArray(ep.platforms) ? ep.platforms : typeof ep.platforms === "string" ? ep.platforms.split(",") : [];
+    plats = ["epic", "steam", "gog"].filter(function (p) {
+      return plats.indexOf(p) >= 0;
+    });
     out.epic = {
+      platforms: plats.length ? plats : ["epic"],
       api: typeof ep.api === "string" ? ep.api.trim() : "",
       fallback: isOn(ep.fallback),
       upcoming: isOn(ep.upcoming),
@@ -2856,6 +2862,14 @@
     "https://60s.crystelf.top/v2/epic"
   ];
   var EPIC_STORE = "https://store.epicgames.com/free-games";
+  // 每个平台：显示名、商店链接只认哪些域名、链接不可信时退回到哪个页面（和 aside.html / page_epic.html 里的一致）
+  var GAME_STORES = {
+    epic: { name: "Epic", full: "Epic Games Store", host: /(^|\.)epicgames\.com$/i, home: EPIC_STORE },
+    steam: { name: "Steam", full: "Steam", host: /(^|\.)(steampowered|steamcommunity)\.com$/i, home: "https://store.steampowered.com/search/?maxprice=free&specials=1" },
+    gog: { name: "GOG", full: "GOG.com", host: /(^|\.)gog\.com$/i, home: "https://www.gog.com/zh/games?priceRange=0,0&discounted=true" }
+  };
+  // Steam / GOG 的限免目前只有 api.miao.club 汇总了，没找到别的带 CORS 的公共源
+  var GAMES_API = "https://api.miao.club/api/games/free";
 
   function epicTime(v) {
     if (v == null || v === "") return 0;
@@ -2878,9 +2892,10 @@
     }
   }
 
-  function epicLink(u) {
+  function epicLink(u, platform) {
+    var store = GAME_STORES[platform] || GAME_STORES.epic;
     var url = epicHttps(u);
-    return url && /(^|\.)epicgames\.com$/i.test(url.hostname) ? url.href : EPIC_STORE;
+    return url && store.host.test(url.hostname) ? url.href : store.home;
   }
 
   function epicCover(u) {
@@ -2943,6 +2958,7 @@
       var price = total && total.originalPrice > 0 && total.fmtPrice ? total.fmtPrice.originalPrice : "";
 
       out.push({
+        platform: "epic",
         id: e.id || e.title,
         title: e.title,
         desc: e.description,
@@ -2961,6 +2977,7 @@
     return (list || []).map(function (g) {
       g = g || {};
       return {
+        platform: "epic",
         id: g.id || g.title,
         title: g.title,
         desc: g.description,
@@ -2985,6 +3002,7 @@
       var start = g.startDate != null ? g.startDate : g.start;
       var end = g.endDate != null ? g.endDate : g.end;
       return {
+        platform: "epic",
         id: g.id || g.url || g.title,
         title: g.title,
         desc: g.description,
@@ -2995,6 +3013,35 @@
         start: epicTime(start) || epicBeijing(start),
         end: epicTime(end) || epicBeijing(end)
       };
+    });
+  }
+
+  // api.miao.club 的 /api/games/free：{ items: [{ id, platform, title, url, image, originalPrice, endDate }] }。
+  // 都是「现在就能领」的；GOG 从来不给截止时间，Steam 大多也没有
+  function epicFromMulti(items) {
+    return items.map(function (g) {
+      g = g || {};
+      return {
+        platform: g.platform,
+        id: g.id || g.url || g.title,
+        title: g.title,
+        cover: g.image,
+        link: g.url,
+        price: /[1-9]/.test(String(g.originalPrice || "")) ? g.originalPrice : "",
+        start: 0,
+        end: epicTime(g.endDate)
+      };
+    });
+  }
+
+  // 正在限免的排前面（先截止的在前，不知道截止时间的垫底），即将限免的按开始时间排
+  function epicSort(list, now) {
+    return list.sort(function (a, b) {
+      var an = a.start <= now;
+      var bn = b.start <= now;
+      if (an !== bn) return an ? -1 : 1;
+      if (!an) return a.start - b.start;
+      return (a.end || 9e15) - (b.end || 9e15);
     });
   }
 
@@ -3010,6 +3057,7 @@
     var data = json && json.data;
     var store = data && data.Catalog && data.Catalog.searchStore;
     if (store && Array.isArray(store.elements)) raw = epicFromOfficial(store.elements, now);
+    else if (data && Array.isArray(data.items)) raw = epicFromMulti(data.items);
     else if (data && (Array.isArray(data.current) || Array.isArray(data.upcoming))) raw = epicFromJuhe(data);
     else if (json && (Array.isArray(json.current) || Array.isArray(json.upcoming))) raw = epicFromJuhe(json);
     else if (Array.isArray(data)) raw = epicFromMirror(data);
@@ -3017,14 +3065,16 @@
     else throw new Error("unknown shape");
 
     var seen = {};
-    return raw
+    var list = raw
       .map(function (g) {
+        var platform = GAME_STORES.hasOwnProperty(g.platform) ? g.platform : "";
         return {
+          platform: platform,
           id: epicText(g.id, 80),
           title: epicText(g.title, 80),
           desc: epicText(g.desc, 200),
           cover: epicCover(g.cover),
-          link: epicLink(g.link),
+          link: epicLink(g.link, platform),
           seller: epicText(g.seller, 60),
           price: epicText(g.price, 20),
           start: Number(g.start) || 0,
@@ -3032,17 +3082,14 @@
         };
       })
       .filter(function (g) {
-        if (!g.title || !g.end || g.end <= now || seen[g.id]) return false;
-        seen[g.id] = 1;
+        var key = g.platform + ":" + g.id;
+        if (!g.platform || !g.title || seen[key]) return false;
+        // Epic 一定有截止时间，没有就是数据坏了；Steam / GOG 常常不给，照样显示
+        if (g.end ? g.end <= now : g.platform === "epic") return false;
+        seen[key] = 1;
         return true;
-      })
-      .sort(function (a, b) {
-        var an = a.start <= now;
-        var bn = b.start <= now;
-        if (an !== bn) return an ? -1 : 1;
-        return an ? a.end - b.end : a.start - b.start;
-      })
-      .slice(0, 12);
+      });
+    return epicSort(list, now).slice(0, 12);
   }
 
   function epicFetch(url) {
@@ -3095,6 +3142,46 @@
     return next();
   }
 
+  // Epic 走上面那条带兜底的链（能拿到「即将限免」和发行商），Steam / GOG 一个请求一起拿。
+  // 哪边失败就只显示另一边，两边都失败才算失败
+  function gamesLoad(apis, platforms, now) {
+    var jobs = [];
+    var ok = 0;
+    if (platforms.indexOf("epic") >= 0) jobs.push(epicLoad(apis, now));
+    var others = platforms.filter(function (p) {
+      return p !== "epic";
+    });
+    if (others.length) {
+      jobs.push(
+        epicFetch(GAMES_API + "?platform=" + others.join(",")).then(function (json) {
+          return epicNormalize(json, now);
+        })
+      );
+    }
+    return Promise.all(
+      jobs.map(function (job) {
+        return job.then(
+          function (items) {
+            ok++;
+            return items;
+          },
+          function () {
+            return [];
+          }
+        );
+      })
+    ).then(function (lists) {
+      if (!ok) throw new Error("all failed");
+      // 接口多给了没勾的平台也不显示
+      return epicSort(
+        [].concat.apply([], lists).filter(function (g) {
+          return platforms.indexOf(g.platform) >= 0;
+        }),
+        now
+      );
+    });
+  }
+
   function epicWhen(ms) {
     try {
       return new Date(ms).toLocaleString(root.lang || undefined, {
@@ -3121,8 +3208,10 @@
     return node("span", "x-epic-badge " + (isNow ? "is-now" : "is-soon"), isNow ? t("js.epicNow", "限免中") : t("js.epicSoon", "即将限免"));
   }
 
+  // 不知道截止时间（GOG、大部分 Steam）就什么都不写
   function epicDeadline(g, now) {
-    return g.start <= now ? t("js.epicUntil", "截止 {0}", epicWhen(g.end)) : t("js.epicFrom", "{0} 开始", epicWhen(g.start));
+    if (g.start > now) return t("js.epicFrom", "{0} 开始", epicWhen(g.start));
+    return g.end ? t("js.epicUntil", "截止 {0}", epicWhen(g.end)) : "";
   }
 
   function epicPrice(g) {
@@ -3158,26 +3247,30 @@
     return a;
   }
 
-  // 右栏卡片里的一行
-  function epicRow(g, now) {
+  // 右栏卡片里的一行。勾了不止一个平台时，发行商的位置换成平台名
+  function epicRow(g, now, multi) {
     var a = epicOutLink("a", "x-card-row x-epic-row", g);
     var main = node("div", "x-card-row-main");
     var label = node("div", "x-card-row-label");
+    var when = epicDeadline(g, now);
     label.appendChild(epicBadge(g, now));
-    label.appendChild(document.createTextNode(" · " + epicDeadline(g, now)));
+    if (when) label.appendChild(document.createTextNode(" · " + when));
     main.appendChild(label);
     main.appendChild(node("div", "x-card-row-title", g.title));
     var sub = node("div", "x-card-row-label");
+    var by = multi ? GAME_STORES[g.platform].name : g.seller;
     sub.appendChild(epicPrice(g));
-    if (g.seller) sub.appendChild(document.createTextNode(" · " + g.seller));
+    if (by) sub.appendChild(document.createTextNode(" · " + by));
     main.appendChild(sub);
     a.appendChild(main);
     if (g.cover) a.appendChild(epicImg(g, "x-epic-cover", 192, 108));
     return a;
   }
 
-  // 「Epic 限免」页面里的一条，长得像一条带图的帖子
-  function epicTweet(g, now) {
+  // 「游戏限免」页面里的一条，长得像一条带图的帖子
+  function epicTweet(g, now, multi) {
+    var store = GAME_STORES[g.platform];
+    var when = epicDeadline(g, now);
     var art = node("article", "x-tweet x-epic-tweet");
     var side = node("div", "x-tweet-side");
     var avatar = node("span", "x-avatar x-epic-avatar");
@@ -3190,9 +3283,12 @@
 
     var main = node("div", "x-tweet-main");
     var head = node("div", "x-tweet-head");
-    head.appendChild(node("span", "x-tweet-name", g.seller || "Epic Games Store"));
-    head.appendChild(node("span", "x-tweet-dot", "·"));
-    head.appendChild(node("span", "x-tweet-time", epicDeadline(g, now)));
+    head.appendChild(node("span", "x-tweet-name", g.seller || store.full));
+    if (multi && g.seller) head.appendChild(node("span", "x-tweet-handle", store.name));
+    if (when) {
+      head.appendChild(node("span", "x-tweet-dot", "·"));
+      head.appendChild(node("span", "x-tweet-time", when));
+    }
     main.appendChild(head);
 
     var title = node("h2", "x-tweet-title");
@@ -3245,13 +3341,17 @@
     var apis = cfg.api
       ? [cfg.api].concat(cfg.fallback === false ? [] : EPIC_APIS.filter(function (u) { return u !== cfg.api; }))
       : EPIC_APIS;
+    var platforms = cfg.platforms || ["epic"];
+    var multi = platforms.length > 1;
+    // 换了接口或者换了勾选的平台，旧缓存就不能用了
+    var src = (cfg.api || "") + "|" + platforms.join(",");
     var ttl = Math.max(0.25, Math.min(48, Number(cfg.cacheHours) || 3)) * 3600000;
     var showSoon = cfg.upcoming !== false;
     var limit = Math.max(1, Math.min(12, Number(cfg.count) || 4));
 
     function visible(list) {
       return list.filter(function (g) {
-        return g.end > now && (showSoon || g.start <= now);
+        return (!g.end || g.end > now) && (showSoon || g.start <= now);
       });
     }
 
@@ -3261,7 +3361,7 @@
         var box = $("[data-epic-list]", card);
         box.textContent = "";
         list.slice(0, limit).forEach(function (g) {
-          box.appendChild(epicRow(g, now));
+          box.appendChild(epicRow(g, now, multi));
         });
         card.hidden = !list.length; // 没有就整块不出现，ResizeObserver 会让右栏重新量高度
       }
@@ -3269,7 +3369,7 @@
         var feed = $("[data-epic-feed]", page);
         feed.textContent = "";
         list.forEach(function (g) {
-          feed.appendChild(epicTweet(g, now));
+          feed.appendChild(epicTweet(g, now, multi));
         });
         page.setAttribute("data-state", list.length ? "ready" : "empty");
       }
@@ -3283,23 +3383,23 @@
     try {
       cached = JSON.parse(store(KEY.epic) || "null");
     } catch (e) {}
-    if (cached && (cached.api !== (cfg.api || "") || !Array.isArray(cached.items))) cached = null;
+    if (cached && (cached.src !== src || !Array.isArray(cached.items))) cached = null;
     if (cached) {
       cached.items = cached.items.filter(function (g) {
-        return g && typeof g === "object" && typeof g.title === "string" && typeof g.link === "string" && g.end > 0;
+        return g && typeof g === "object" && typeof g.title === "string" && typeof g.link === "string" && GAME_STORES.hasOwnProperty(g.platform);
       });
     }
 
     // 缓存没过期、而且里面最早结束的那个还没结束（结束了说明换了一批），就不去打扰接口
-    var fresh = cached && now - cached.t < ttl && cached.items.every(function (g) { return g.end > now; });
+    var fresh = cached && now - cached.t < ttl && cached.items.every(function (g) { return !g.end || g.end > now; });
     if (cached) render(cached.items);
     if (fresh) return;
 
-    epicLoad(apis, now).then(
+    gamesLoad(apis, platforms, now).then(
       function (items) {
         // 空结果只缓存一小会儿：这周真没有限免是少数，多半是接口那头出了岔子
         var age = items.length ? 0 : ttl - Math.min(ttl, 900000);
-        store(KEY.epic, JSON.stringify({ t: now - age, api: cfg.api || "", items: items }));
+        store(KEY.epic, JSON.stringify({ t: now - age, src: src, items: items }));
         render(items);
       },
       function () {
