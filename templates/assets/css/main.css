@@ -823,7 +823,18 @@ a.x-card-row:hover { background: var(--hover); text-decoration: none; }
 }
 
 /* --------------------------------------------------------- 申请友链 */
+/* 两份申请块：宽屏用右栏那份，窄屏（右栏本来就隐藏）用正文底部那份 */
 .x-apply { border-top: 1px solid var(--border); }
+.x-apply-head { margin: 0; padding: 14px 16px 0; font-size: 1.266rem; font-weight: 800; }
+.x-apply--aside { border-top: 0; }
+.x-apply--aside .x-apply-head { padding: 12px 16px; font-size: 1.133rem; }
+.x-apply--aside .x-apply-body { padding: 0 16px 16px; }
+.x-apply--aside .x-apply-mine { font-size: 0.866rem; }
+.x-apply--aside .x-apply-mine dt { flex: 0 0 44px; }
+.x-apply--aside .x-apply-acts .x-btn { flex: 1; justify-content: center; }
+@media (min-width: 1050px) {
+  .x-apply--main { display: none; }
+}
 .x-apply-body { padding: 4px 16px 24px; }
 .x-apply-lead { margin: 0 0 12px; color: var(--text-secondary); font-size: 0.933rem; line-height: 1.6; }
 .x-apply-mine {

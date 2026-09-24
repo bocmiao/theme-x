@@ -564,8 +564,13 @@
      插件没装、或者没开「启用友链申请 / 允许访客提交」时接口是 404/403，
      这里就收起表单、给访客一句说明，站长自己的信息照常显示。 */
   function initLinkApply() {
-    var box = $("[data-link-apply]");
-    if (!box) return;
+    // 页面上有两份（右栏一份、窄屏用的正文底部一份），各自独立要验证码、独立提交
+    $$("[data-link-apply]").forEach(setupLinkApply);
+  }
+
+  function setupLinkApply(box) {
+    if (box.hasAttribute("data-apply-ready")) return;
+    box.setAttribute("data-apply-ready", "1");
     var form = $("[data-apply-form]", box);
     var openBtn = $("[data-apply-open]", box);
     var cancelBtn = $("[data-apply-cancel]", box);

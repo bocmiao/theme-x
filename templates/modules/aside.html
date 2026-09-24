@@ -36,6 +36,12 @@
     <!--/* 带 is-follow 的小组件会被 CSS 排到下面，由 theme.js 的 initAsideFollow 让它们跟着页面走；
          不带的留在上面随页面滚走。哪些跟随由「右栏 → 跟随滚动的小组件」决定 */-->
     <div class="x-aside-inner" data-aside-inner>
+      <!--/* 申请友链：只有友链页会传 applyWidget，别的页面不渲染。
+           th:replace 的优先级比 th:if 高，写在同一个标签上条件不生效，所以要套一层 */-->
+      <th:block th:if="${applyWidget}">
+        <th:block th:replace="~{modules/link :: apply(place='aside')}"></th:block>
+      </th:block>
+
       <!--/* 订阅卡 */-->
       <section class="x-card" th:if="${sb?.promo != 'off'}" th:classappend="${#lists.contains(follow, 'promo')} ? 'is-follow'">
         <h2 class="x-card-title" th:text="${sb?.promo_title ?: (#messages.msg('default.promoTitle'))}"></h2>
