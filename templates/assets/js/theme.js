@@ -42,6 +42,7 @@
     fontSize: "x:font-size",
     avatar: "x:avatar",
     tab: "x:home-tab",
+    feed: "x:feed",
     like: "x:liked:",
     bookmarks: "x:bookmarks",
     follow: "x:follow:",
@@ -471,9 +472,54 @@
       var iso = el.getAttribute("data-relative-time");
       var rel = relativeTime(iso);
       if (!rel) return;
-      el.title = el.textContent.trim();
-      el.textContent = rel;
+      var abs = el.textContent.trim();
+      el.title = abs;
+      el.setAttribute("data-abs", abs); // 博客列表模式下显示的是这个绝对日期
+      el.textContent = feedMode() === "blog" ? abs : rel;
     });
+  }
+
+  /* ------------------------------------------------------- 文章列表样式 */
+  /* 两种看法共用同一套 DOM，只在 <html> 上换 data-feed，剩下的交给 CSS：
+     x    = X 时间线（头像、正文、互动栏）
+     blog = 博客列表（大标题、两行摘要、右侧缩略图）
+     首屏已经在 head 里按 localStorage 落好了，这里只管切换和按钮状态。 */
+  function feedMode() {
+    return root.getAttribute("data-feed") === "blog" ? "blog" : "x";
+  }
+
+  function setFeedMode(mode) {
+    var next = mode === "blog" ? "blog" : "x";
+    root.setAttribute("data-feed", next);
+    store(KEY.feed, next);
+    syncFeedStyle();
+  }
+
+  function syncFeedStyle() {
+    var mode = feedMode();
+    // X 时间线用「4天」这种相对时间，博客列表用「9月20日」这种绝对日期，更像列表
+    $$("[data-abs]").forEach(function (el) {
+      var abs = el.getAttribute("data-abs");
+      var rel = relativeTime(el.getAttribute("data-relative-time"));
+      el.textContent = mode === "blog" || !rel ? abs : rel;
+    });
+    $$("[data-feed-option]").forEach(function (btn) {
+      btn.classList.toggle("is-on", btn.getAttribute("data-feed") === mode);
+    });
+    $$("[data-feed-toggle]").forEach(function (btn) {
+      btn.setAttribute("aria-pressed", mode === "blog" ? "true" : "false");
+    });
+  }
+
+  function initFeedStyle() {
+    // 首页那个按钮在中栏里，软导航会整块换掉，所以用委托绑一次就够
+    on(document, "click", function (e) {
+      var opt = e.target.closest ? e.target.closest("[data-feed-option]") : null;
+      if (opt) return setFeedMode(opt.getAttribute("data-feed"));
+      var toggle = e.target.closest ? e.target.closest("[data-feed-toggle]") : null;
+      if (toggle) setFeedMode(feedMode() === "blog" ? "x" : "blog");
+    });
+    syncFeedStyle();
   }
 
   /* ----------------------------------------------------------- 申请友链 */
@@ -3762,6 +3808,7 @@
     initChromeAutoHide,
     initAsideFollow,
     initNavMenu,
+    initFeedStyle,
     initSoftNav
   ];
 
@@ -3781,6 +3828,7 @@
     initNewPosts,
     initEpic,
     initTip,
+    syncFeedStyle,
     initLinkApply,
     initBookmarksFallback,
     renderBookmarksPage

@@ -44,9 +44,22 @@
         <h1 class="visually-hidden" th:text="#{common.home}">首页</h1>
 
         <header class="x-header" th:if="${not #strings.isEmpty(tabTwo)}">
-          <div class="x-tabs" role="tablist" th:aria-label="#{common.home}">
-            <button class="x-tab is-active" type="button" role="tab" id="x-tab-primary" aria-selected="true" data-tab="primary"><span th:text="${hm?.tab_primary ?: (#messages.msg('default.tabPrimary'))}"></span></button>
-            <button class="x-tab" type="button" role="tab" id="x-tab-secondary" aria-selected="false" tabindex="-1" data-tab="secondary"><span th:text="${tabTwo}"></span></button>
+          <div class="x-header-tabs">
+            <div class="x-tabs" role="tablist" th:aria-label="#{common.home}">
+              <button class="x-tab is-active" type="button" role="tab" id="x-tab-primary" aria-selected="true" data-tab="primary"><span th:text="${hm?.tab_primary ?: (#messages.msg('default.tabPrimary'))}"></span></button>
+              <button class="x-tab" type="button" role="tab" id="x-tab-secondary" aria-selected="false" tabindex="-1" data-tab="secondary"><span th:text="${tabTwo}"></span></button>
+            </div>
+            <!--/* 访客自己切列表样式；具体选了哪种存在他自己浏览器里 */-->
+            <button
+              class="x-feed-toggle"
+              type="button"
+              data-feed-toggle
+              th:title="#{display.feedStyle}"
+              th:aria-label="#{display.feedStyle}"
+            >
+              <iconify-icon class="x-feed-icon-x" icon="ri:layout-top-2-line" aria-hidden="true"></iconify-icon>
+              <iconify-icon class="x-feed-icon-blog" icon="ri:list-check-2" aria-hidden="true"></iconify-icon>
+            </button>
           </div>
         </header>
 

@@ -655,6 +655,16 @@ spec:
               value: circle
             - label: 方形
               value: square
+        - $formkit: select
+          name: feed_style
+          label: 文章列表样式
+          value: "x"
+          help: 访客可以自己改（首页标签栏右边的按钮，或者「显示」面板里的「列表样式」），选过之后以他自己的为准；这里设的是没改过的人看到的样子。作用范围是首页、探索、分类、标签和搜索结果
+          options:
+            - label: X 时间线（头像、正文、互动按钮）
+              value: "x"
+            - label: 博客列表（大标题、两行摘要、右侧缩略图）
+              value: blog
         - $formkit: text
           name: font_family
           label: 自定义字体

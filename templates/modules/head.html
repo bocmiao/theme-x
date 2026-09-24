@@ -58,7 +58,8 @@
           bg: /*[[${st?.background}]]*/ "auto",
           accent: /*[[${st?.accent}]]*/ "blue",
           size: /*[[${st?.font_size}]]*/ "3",
-          avatar: /*[[${st?.avatar_shape}]]*/ "circle"
+          avatar: /*[[${st?.avatar_shape}]]*/ "circle",
+          feed: /*[[${st?.feed_style}]]*/ "x"
         };
         root.setAttribute("data-bg-default", defaults.bg || "auto");
 
@@ -88,6 +89,11 @@
         root.setAttribute("data-font-size", size);
 
         root.setAttribute("data-avatar", read("x:avatar") || defaults.avatar || "circle");
+
+        // 列表样式：X 时间线 / 博客列表。和配色一样先落到 <html> 上，免得渲染完再跳一下
+        var feed = read("x:feed");
+        if (feed !== "x" && feed !== "blog") feed = defaults.feed === "blog" ? "blog" : "x";
+        root.setAttribute("data-feed", feed);
       })();
       /*]]>*/
     </script>

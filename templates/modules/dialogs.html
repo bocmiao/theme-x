@@ -57,6 +57,20 @@
           </div>
 
           <div class="x-setting-group">
+            <span class="x-setting-label" th:text="#{display.feedStyle}">列表样式</span>
+            <div class="x-bg-row" style="background: var(--bg-subtle)">
+              <button class="x-bg-option" type="button" data-feed-option data-feed="x">
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.feedX}]]
+              </button>
+              <button class="x-bg-option" type="button" data-feed-option data-feed="blog">
+                <span class="x-bg-check"><iconify-icon icon="ri:check-line" aria-hidden="true"></iconify-icon></span>
+                [[#{display.feedBlog}]]
+              </button>
+            </div>
+          </div>
+
+          <div class="x-setting-group">
             <span class="x-setting-label" th:text="#{display.background}">背景</span>
             <div class="x-bg-row">
               <button class="x-bg-option" type="button" data-bg-option data-bg="light">
