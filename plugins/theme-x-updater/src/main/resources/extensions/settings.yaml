@@ -4,6 +4,48 @@ metadata:
   name: theme-x-updater-settings
 spec:
   forms:
+    - group: webp
+      label: 上传转 WebP
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 上传时自动转 WebP
+          value: "on"
+          help: 后台上传图片时，先在浏览器里把 PNG / JPEG 转成 WebP 再传，体积通常只剩三分之一。附件库、编辑器里粘贴的图片、主题设置里选图上传都走这一条路；GIF、SVG、已经是 WebP 的不碰。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: number
+          name: quality
+          label: 质量
+          value: 82
+          min: 1
+          max: 100
+          help: 1–100，默认 82。照片类图片 75–85 基本看不出差别；想更清晰就调到 90 以上，体积会明显变大
+        - $formkit: number
+          name: max_edge
+          label: 最长边上限（像素）
+          value: 0
+          min: 0
+          help: 超过这个尺寸的图片先等比缩小再转。0 表示不缩放，保持原尺寸。手机拍的照片动辄四五千像素宽，填 2560 就够网页用了
+        - $formkit: number
+          name: min_kb
+          label: 小于多少 KB 的图片不转
+          value: 20
+          min: 0
+          help: 很小的图标、截图转了也省不下多少，还白白多一道重新编码
+        - $formkit: select
+          name: toast
+          label: 转换后提示
+          value: "on"
+          help: 上传时弹一条「1.76 MB → 0.31 MB」，让你知道确实转了
+          options:
+            - label: 提示
+              value: "on"
+            - label: 安静处理
+              value: "off"
     - group: linkHealth
       label: 友链体检
       formSchema:

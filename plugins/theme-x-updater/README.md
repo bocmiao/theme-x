@@ -1,6 +1,6 @@
 # theme-x 助手
 
-Halo 插件，给 theme-x 打配合，三件事：
+Halo 插件，给 theme-x 打配合，一个插件装齐（2.0.0 起把原来单独的 `webp-upload` 插件并了进来）：
 
 1. **检查主题更新**：GitHub 上的 theme-x 有新版本时在后台提示，并在「主题 → 主题管理」里给出
    「更新到 x.y.z」按钮，点一下就用 Halo 自带的「从地址升级主题」升到最新，主题设置保留。
@@ -8,6 +8,7 @@ Halo 插件，给 theme-x 打配合，三件事：
    填好开启并立刻抓一次——首页那个「正在关注」标签页就靠这些数据。
 3. **友链体检**（1.2.0 起）：菜单「内容 → 友链体检」，定时用 api.miao.club 的「网站可用性检测」把友链挨个查一遍，
    列出正常 / 打不开 / 跳到别的网站的，连续几次打不开的标成「失联」。只出报告，不改友链。
+4. **上传自动转 WebP**（2.0.0 起并进来）：后台上传图片前，在浏览器里把 PNG / JPEG 转成 WebP，服务器上什么都不用装。
 
 怎么装、怎么用见主题的 README。
 
@@ -50,6 +51,25 @@ Halo 插件，给 theme-x 打配合，三件事：
 - **设置**（`extensions/settings.yaml`，分组 `linkHealth`）：开关、间隔、连续几次算失联、API Key。
 - **权限**：`roleTemplate.yaml` 把 `linkhealth` 聚合进「链接」插件的 `role-template-link-manage`，能管理友链的人才能看。
 - **前端**：路由 `/theme-x/links-health`（菜单「内容 → 友链体检」）。
+
+### 上传自动转 WebP
+
+Halo 2.26 本身没有任何图片格式转换（缩略图用 Thumbnailator，按原格式输出），所以只能在上传前做。
+
+后台所有上传最终都是 `XMLHttpRequest` + `FormData`（附件库用 Uppy，编辑器粘贴图片走 axios，底下都是 XHR），
+个别地方（Pro 版控制台、某些插件）用 fetch。`console/main.js` 把 `XMLHttpRequest.prototype.send` 和 `window.fetch` 都包了一层：
+同源、路径里带 `attachment` 的 POST，并且 FormData 里有 PNG / JPEG / BMP，就先 `createImageBitmap` +
+`canvas.toBlob("image/webp", 质量)` 转一遍，把 FormData 里的文件换掉再发。
+
+- 转不出 WebP（Safari 这类浏览器 `toBlob` 会退回 PNG）、转完反而更大、或者中途报错 → 原样上传，绝不会把上传卡住；
+- 小于设定大小的图片不转；GIF（转了会丢动画）、SVG、已经是 WebP 的不碰；
+- `createImageBitmap` 按 EXIF 方向解码，手机竖拍的照片不会躺下；
+- 设置读 `GET /apis/api.console.halo.run/v1alpha1/plugins/theme-x-updater/json-config` 的 `webp` 分组，读不到（个人中心、没权限）用默认值；
+- 每次上传的判定结果记在 `window.__webpUpload.seen`，方便排查。
+
+**和旧插件并存**：旧的 `webp-upload` 插件还在、而且先加载了（`window.__webpUpload` 已经有了）的话，这边不再包第二层。
+进后台时（有管理插件权限）检测到旧插件就弹框：先把它 `basic` 分组的设置搬到这边的 `webp` 分组（字段名一样），
+再 `DELETE /apis/plugin.halo.run/v1alpha1/plugins/webp-upload`。一个浏览器会话只问一次。
 
 ## 构建
 

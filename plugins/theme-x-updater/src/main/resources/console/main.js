@@ -4,7 +4,11 @@
    2. 仪表盘部件「theme-x 更新」（仪表盘「设置 → 添加部件 → 小部件中心 → 其他」里加）
    3. 进后台时有新版本就弹一条提示（每个版本每次打开浏览器只提示一次）
    4. 菜单「内容 → 友链 RSS」：一键给所有友链自动发现 RSS 地址并抓取，
-      首页那个「正在关注」标签页就靠这些数据 */
+      首页那个「正在关注」标签页就靠这些数据
+   5. 菜单「内容 → 友链体检」：看后端定时检查友链的报告
+   6. 上传自动转 WebP：上传前在浏览器里把 PNG / JPEG 转成 WebP（2.0.0 起从单独的插件并进来）
+
+   排查 WebP 用：控制台里看 `window.__webpUpload.seen`，每次上传都会记一条（地址、是否命中、转换结果）。 */
 (function () {
   "use strict";
 
@@ -14,6 +18,8 @@
   var shared = window.HaloUiShared;
   var h = Vue.h;
 
+  var PLUGIN = "theme-x-updater";
+  var VERSION = "2.0.0";
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];
@@ -906,6 +912,242 @@
     }
   });
 
+  /* ---------------------------------------------------------------- 上传自动转 WebP
+     后台上传附件都是往「带 attachment 的接口」POST 一个 FormData：附件库用 Uppy（XHR），
+     编辑器走 axios（底下也是 XHR），个别地方可能用 fetch。这里把 XHR.send 和 fetch 都包一层：
+     看到 FormData 里有 PNG / JPEG，就先在 canvas 里转成 WebP 再发。服务器上什么都不用装。
+     设置在「插件 → theme-x 助手 → 设置 → 上传转 WebP」。 */
+  (function webp() {
+    // 旧的「上传自动转 WebP」插件还没卸载、而且先加载了：这次让它处理，别包两层
+    if (window.__webpUpload) {
+      if (window.console && console.info) console.info("[webp-upload] 旧的「上传自动转 WebP」插件还在，这次由它处理；卸载它之后由 theme-x 助手接手");
+      return;
+    }
+
+    // 不写死具体路径：同源、路径里带 attachment 的 POST 都算附件上传
+    // （Halo 社区版是 /apis/api.console.halo.run/v1alpha1/attachments/upload，
+    //   个人中心是 /apis/uc.api.storage.halo.run/…/attachments/-/upload，Pro 版或插件可能另有路径）
+    var SOURCE = { "image/png": 1, "image/jpeg": 1, "image/bmp": 1 };
+    var log = { seen: [], version: VERSION + "（theme-x 助手）" };
+    window.__webpUpload = log;
+
+    function note(entry) {
+      entry.at = new Date().toISOString();
+      log.seen.push(entry);
+      if (log.seen.length > 30) log.seen.shift();
+      if (window.console && console.info) console.info("[webp-upload]", entry.url, entry.result);
+    }
+
+    function isUploadUrl(url) {
+      try {
+        var u = new URL(String(url || ""), location.href);
+        return u.origin === location.origin && /attachment/i.test(u.pathname);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    var cfg = { enabled: true, quality: 0.82, maxEdge: 0, minBytes: 20 * 1024, toast: true };
+
+    function num(v, dflt) {
+      // Halo 的设置里数字也可能存成字符串
+      var n = typeof v === "string" ? parseFloat(v) : v;
+      return typeof n === "number" && isFinite(n) ? n : dflt;
+    }
+
+    // 插件设置；取不到（比如在个人中心里、没有管理插件的权限）就用默认值
+    fetch("/apis/api.console.halo.run/v1alpha1/plugins/" + PLUGIN + "/json-config", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" }
+    })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (json) {
+        var b = (json && json.webp) || null;
+        if (!b) return;
+        if (b.enabled === "off") cfg.enabled = false;
+        cfg.quality = Math.min(100, Math.max(1, num(b.quality, 82))) / 100;
+        cfg.maxEdge = Math.max(0, num(b.max_edge, 0));
+        cfg.minBytes = Math.max(0, num(b.min_kb, 20)) * 1024;
+        cfg.toast = b.toast !== "off";
+      })
+      .catch(function () {});
+
+    function mb(n) {
+      return n >= 1024 * 1024 ? (n / 1024 / 1024).toFixed(2) + " MB" : Math.round(n / 1024) + " KB";
+    }
+
+    function convert(file) {
+      // createImageBitmap 会按 EXIF 方向解码，手机竖拍的照片不会躺下
+      return createImageBitmap(file)
+        .then(function (bmp) {
+          var w = bmp.width;
+          var ht = bmp.height;
+          var long = Math.max(w, ht);
+          if (cfg.maxEdge && long > cfg.maxEdge) {
+            var k = cfg.maxEdge / long;
+            w = Math.round(w * k);
+            ht = Math.round(ht * k);
+          }
+          var canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = ht;
+          canvas.getContext("2d").drawImage(bmp, 0, 0, w, ht);
+          if (bmp.close) bmp.close();
+          return new Promise(function (res) {
+            canvas.toBlob(res, "image/webp", cfg.quality);
+          });
+        })
+        .then(function (blob) {
+          // Safari 这类不会编码 WebP 的浏览器会退回 PNG，这时候原样上传
+          if (!blob || blob.type !== "image/webp") return null;
+          if (blob.size >= file.size) return null; // 没变小就不换（小图、已经压过的图会这样）
+          return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", {
+            type: "image/webp",
+            lastModified: Date.now()
+          });
+        });
+    }
+
+    function pick(form) {
+      var found = null;
+      form.forEach(function (v, k) {
+        if (found) return;
+        if (v && typeof v === "object" && typeof v.size === "number" && SOURCE[v.type] && v.size >= cfg.minBytes) {
+          found = { key: k, file: v };
+        }
+      });
+      return found;
+    }
+
+    /* 把 FormData 里的图片换成 WebP；返回一个 Promise，无论成败都会走到底，
+       不能因为转换失败把上传卡住。顺手把结果记进 __webpUpload.seen 方便排查。 */
+    function swap(body, url) {
+      if (!cfg.enabled) return Promise.resolve(note({ url: url, result: "插件设置里关掉了" }));
+      if (typeof createImageBitmap !== "function") return Promise.resolve(note({ url: url, result: "浏览器不支持 createImageBitmap" }));
+      var hit = pick(body);
+      if (!hit) return Promise.resolve(note({ url: url, result: "FormData 里没有够大的 PNG/JPEG" }));
+
+      return convert(hit.file)
+        .then(function (out) {
+          if (!out) return note({ url: url, result: "没换（浏览器转不出 WebP，或者转完反而更大）", file: hit.file.name });
+          body.set(hit.key, out, out.name);
+          note({ url: url, result: "已转 WebP " + mb(hit.file.size) + " → " + mb(out.size), file: hit.file.name });
+          if (cfg.toast && C && C.Toast) {
+            C.Toast.info(hit.file.name + " → WebP，" + mb(hit.file.size) + " → " + mb(out.size), { duration: 4000 });
+          }
+        })
+        .catch(function (e) {
+          note({ url: url, result: "转换出错：" + (e && e.message), file: hit.file.name });
+        });
+    }
+
+    var open = XMLHttpRequest.prototype.open;
+    var send = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__webpUrl = typeof url === "string" ? url : "";
+      return open.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.send = function (body) {
+      var xhr = this;
+      var args = arguments;
+      var url = xhr.__webpUrl || "";
+      if (!(body instanceof FormData) || !isUploadUrl(url)) return send.apply(xhr, args);
+      swap(body, url).then(function () {
+        send.apply(xhr, args);
+      });
+    };
+
+    // 有的地方用 fetch 传（Pro 版控制台、某些插件），一并接住
+    var rawFetch = window.fetch;
+    if (typeof rawFetch === "function") {
+      window.fetch = function (input, init) {
+        var url = typeof input === "string" ? input : input && input.url;
+        var body = init && init.body;
+        var method = String((init && init.method) || (input && input.method) || "GET").toUpperCase();
+        if (method !== "POST" || !(body instanceof FormData) || !isUploadUrl(url)) {
+          return rawFetch.apply(window, arguments);
+        }
+        var args = arguments;
+        return swap(body, url).then(function () {
+          return rawFetch.apply(window, args);
+        });
+      };
+    }
+
+    if (window.console && console.info) console.info("[webp-upload] 已就绪（" + log.version + "）：上传 PNG / JPEG 会自动转成 WebP");
+  })();
+
+  /* ---------------------------------------------------------------- 请走旧的 WebP 插件
+     2.0.0 之前「上传自动转 WebP」是单独一个插件（webp-upload）。还装着的话弹一次框：
+     把它的设置搬过来，然后替站长卸载它。点「以后再说」这次浏览器会话里就不再问。 */
+  var OLD_WEBP = "webp-upload";
+
+  function canManagePlugins() {
+    try {
+      return shared.utils.permission.has(["system:plugins:manage"]);
+    } catch (e) {
+      return true; // 判断不了就去问接口，没权限接口会拒绝，框也就不会弹
+    }
+  }
+
+  function retireOldWebp() {
+    var asked = "theme-x-updater:retire-webp";
+    try {
+      if (sessionStorage.getItem(asked)) return;
+    } catch (e) {}
+    ax()
+      .get("/apis/plugin.halo.run/v1alpha1/plugins/" + OLD_WEBP, { mute: true })
+      .then(function () {
+        try {
+          sessionStorage.setItem(asked, "1");
+        } catch (e) {}
+        C.Dialog.info({
+          title: "「上传自动转 WebP」已经并进 theme-x 助手",
+          description:
+            "旧的「上传自动转 WebP」插件用不着了。点「卸载旧插件」会先把它的设置（质量、最长边、多小不转、提示）搬到" +
+            "「theme-x 助手 → 设置 → 上传转 WebP」，再卸载它。已经传上去的图片不受影响。",
+          confirmText: "卸载旧插件",
+          cancelText: "以后再说",
+          onConfirm: function () {
+            return moveWebpSettings()
+              .then(function () {
+                return ax().delete("/apis/plugin.halo.run/v1alpha1/plugins/" + OLD_WEBP);
+              })
+              .then(function () {
+                C.Toast.success("旧插件已卸载，设置已搬到 theme-x 助手。刷新一下页面就完全由 theme-x 助手接手");
+              })
+              .catch(function (e) {
+                C.Toast.error("没能卸载：" + errorText(e) + "。可以去「插件」列表里手动卸载「上传自动转 WebP」");
+              });
+          }
+        });
+      })
+      .catch(function () {
+        // 没装旧插件（404）或者没权限，什么都不用做
+      });
+  }
+
+  // 旧插件的设置在它自己的「基本设置」分组（basic）里，字段名和这边的 webp 分组一样
+  function moveWebpSettings() {
+    var base = "/apis/api.console.halo.run/v1alpha1/plugins/";
+    return Promise.all([ax().get(base + OLD_WEBP + "/json-config"), ax().get(base + PLUGIN + "/json-config")])
+      .then(function (res) {
+        var old = (res[0].data && res[0].data.basic) || null;
+        if (!old) return null;
+        var mine = res[1].data || {};
+        mine.webp = Object.assign({}, mine.webp, old);
+        return API.consoleApiClient.plugin.plugin.updatePluginJsonConfig({ name: PLUGIN, body: mine });
+      })
+      ["catch"](function () {
+        // 搬不过来就用默认设置，不耽误卸载
+        return null;
+      });
+  }
+
   /* ---------------------------------------------------------------- 进后台时的提示 */
   function canManageThemes() {
     try {
@@ -934,6 +1176,11 @@
     }, 2500);
   }
   startupNotice();
+  if (/^\/console(\/|$)/.test(location.pathname)) {
+    setTimeout(function () {
+      if (canManagePlugins()) retireOldWebp();
+    }, 3500);
+  }
 
   /* ---------------------------------------------------------------- 注册 */
   window["theme-x-updater"] = shared.definePlugin({

@@ -12,9 +12,9 @@ spec:
   homepage: https://github.com/bocmiao/theme-x
   repo: https://github.com/bocmiao/theme-x
   displayName: "theme-x 助手"
-  description: "三件事：一是检查 theme-x 有没有新版本，有就在主题列表里给出「更新到 x.y.z」按钮，点一下升级、设置保留；二是「内容 → 友链 RSS」里一键给所有友链自动发现 RSS 地址并抓取，首页的「正在关注」标签页就靠它；三是「内容 → 友链体检」，定时用 api.miao.club 检查友链还能不能打开。"
+  description: "theme-x 的配套插件，一个装齐：检查主题新版本并一键更新（设置保留）；上传图片时在浏览器里自动转 WebP；「内容 → 友链 RSS」一键给所有友链发现并抓取 RSS（首页「正在关注」靠它）；「内容 → 友链体检」定时用 api.miao.club 检查友链还能不能打开。"
   license:
     - name: MIT
-  version: 1.2.0
+  version: 2.0.0
   settingName: theme-x-updater-settings
   configMapName: theme-x-updater-configmap
