@@ -1,6 +1,7 @@
 /* theme-x 助手 · 后台部分
    不经过构建：直接用 Halo 后台挂在 window 上的 Vue / HaloComponents / HaloApiClient。
-   1. 主题列表里 theme-x 那一行：有新版本时多一个「更新到 x.y.z」按钮
+   1. 主题列表里 theme-x 那一行：有新版本时多一个「更新到 x.y.z」按钮；
+      插件列表里 theme-x 助手那一行同理（插件的新版就在主题包里带着，见 upgradePluginNow）
    2. 仪表盘部件「theme-x 更新」（仪表盘「设置 → 添加部件 → 小部件中心 → 其他」里加）
    3. 进后台时有新版本就弹一条提示（每个版本每次打开浏览器只提示一次）
    4. 菜单「内容 → 友链 RSS」：一键给所有友链自动发现 RSS 地址并抓取，
@@ -19,10 +20,12 @@
   var h = Vue.h;
 
   var PLUGIN = "theme-x-updater";
-  var VERSION = "2.0.0";
+  var VERSION = "2.1.0"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];
+  var PLUGIN_JAR = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/plugin-jar";
+  var PLUGIN_PERM = ["system:plugins:manage"];
 
   /* ---------------------------------------------------------------- 共享状态 */
   var state = Vue.reactive({
@@ -30,7 +33,10 @@
     info: null, // { version, uri, notes?, checkedAt }
     error: "",
     installed: "",
-    upgrading: false
+    upgrading: false,
+    pluginInstalled: "",
+    pluginUpgrading: false,
+    alsoPlugin: true // 更新主题时顺手把插件也更新了（确认框里的勾选框）
   });
   var pending = null;
 
@@ -48,6 +54,24 @@
 
   function hasUpdate(installed) {
     return !!(installed && state.info && state.info.version && cmp(state.info.version, installed) > 0);
+  }
+
+  function canUpgradePlugin() {
+    try {
+      return shared.utils.permission.has(PLUGIN_PERM);
+    } catch (e) {
+      return true;
+    }
+  }
+
+  // 主题包里带的插件版本（后端从同一个压缩包里读出来的）
+  function pluginLatest() {
+    return (state.info && state.info.plugin && state.info.plugin.version) || "";
+  }
+
+  function pluginHasUpdate() {
+    var v = pluginLatest();
+    return !!(v && canUpgradePlugin() && cmp(v, state.pluginInstalled || VERSION) > 0);
   }
 
   function errorText(e) {
@@ -98,6 +122,60 @@
       });
   }
 
+  function loadPluginInstalled() {
+    return API.coreApiClient.plugin.plugin
+      .getPlugin({ name: PLUGIN }, { mute: true })
+      .then(function (r) {
+        state.pluginInstalled = (r.data && r.data.spec && r.data.spec.version) || VERSION;
+      })
+      .catch(function () {
+        state.pluginInstalled = VERSION;
+      });
+  }
+
+  /* 插件自己更新自己：从后端拿主题包里带的新版 jar，交给 Halo 的「升级插件」（上传文件）接口。
+     和后台「插件 → ⋯ → 升级 → 上传」是同一个接口，插件设置保留；服务器不用再去连别的域名。
+     reload === false 时不刷新页面（更新主题时顺带更新插件，由主题那边统一刷新） */
+  function upgradePluginNow(reload) {
+    if (state.pluginUpgrading) return Promise.resolve(false);
+    var v = pluginLatest();
+    if (!v) return Promise.resolve(false);
+    state.pluginUpgrading = true;
+    return fetch(PLUGIN_JAR, { credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) {
+          return res
+            .json()
+            .catch(function () {
+              return {};
+            })
+            .then(function (b) {
+              throw new Error(b.error || "HTTP " + res.status);
+            });
+        }
+        return res.blob();
+      })
+      .then(function (blob) {
+        var file = new File([blob], PLUGIN + "-" + v + ".jar", { type: "application/java-archive" });
+        return API.consoleApiClient.plugin.plugin.upgradePlugin({ name: PLUGIN, file: file }, { mute: true });
+      })
+      .then(function () {
+        state.pluginInstalled = v;
+        if (reload !== false) {
+          C.Toast.success("theme-x 助手已更新到 " + v + "，页面马上刷新");
+          setTimeout(function () {
+            location.reload();
+          }, 1500);
+        }
+        return true;
+      })
+      .catch(function (e) {
+        C.Toast.error("theme-x 助手更新失败：" + errorText(e), { duration: 8000 });
+        state.pluginUpgrading = false;
+        return false;
+      });
+  }
+
   // 和后台「远程下载 → 主题已存在，是否升级」走的是同一个接口，设置会保留
   function upgrade() {
     if (!state.info || state.upgrading) return Promise.resolve(false);
@@ -107,11 +185,14 @@
       .then(function (r) {
         var v = (r.data && r.data.spec && r.data.spec.version) || state.info.version;
         state.installed = v;
-        C.Toast.success("theme-x 已更新到 " + v + "，页面马上刷新");
-        setTimeout(function () {
-          location.reload();
-        }, 1200);
-        return true;
+        var withPlugin = state.alsoPlugin && pluginHasUpdate();
+        return (withPlugin ? upgradePluginNow(false) : Promise.resolve(false)).then(function (pluginDone) {
+          C.Toast.success("theme-x 已更新到 " + v + (pluginDone ? "，theme-x 助手已更新到 " + pluginLatest() : "") + "，页面马上刷新");
+          setTimeout(function () {
+            location.reload();
+          }, 1200);
+          return true;
+        });
       })
       .catch(function (e) {
         C.Toast.error("更新失败：" + errorText(e), { duration: 8000 });
@@ -123,40 +204,63 @@
   /* ---------------------------------------------------------------- 确认框 */
   var UpdateModal = Vue.defineComponent({
     name: "ThemeXUpdateModal",
-    props: { from: { type: String, default: "" } },
+    // kind：theme = 更新主题（插件也有新版时多一个「顺便更新插件」的勾选框）；plugin = 只更新插件
+    props: { from: { type: String, default: "" }, kind: { type: String, default: "theme" } },
     emits: ["close"],
     setup: function (props, ctx) {
       var modal = Vue.ref(null);
+      function busy() {
+        return state.upgrading || state.pluginUpgrading;
+      }
       function close() {
-        if (state.upgrading) return;
+        if (busy()) return;
         if (modal.value && modal.value.close) modal.value.close();
         else ctx.emit("close");
       }
       function go() {
-        upgrade().then(function (ok) {
+        (props.kind === "plugin" ? upgradePluginNow() : upgrade()).then(function (ok) {
           if (!ok) close();
         });
       }
       return function () {
         var info = state.info || {};
+        var isPlugin = props.kind === "plugin";
+        var target = isPlugin ? pluginLatest() : info.version;
         var body = [
           h("div", { style: "font-size:14px;color:#111827" }, [
             "当前 ",
             h("b", null, props.from || "?"),
             h("span", { style: "margin:0 8px;color:#9ca3af" }, "→"),
             "最新 ",
-            h("b", { style: "color:#16a34a" }, info.version)
+            h("b", { style: "color:#16a34a" }, target)
           ]),
           h(
             "div",
             { style: "font-size:13px;color:#6b7280;line-height:1.6" },
-            "从 GitHub 下载最新版覆盖安装，主题设置会保留，一般十几秒完成。"
+            isPlugin
+              ? "新版插件就在 GitHub 上最新的主题包里，取出来交给 Halo 升级，插件设置会保留，几秒钟完成。"
+              : "从 GitHub 下载最新版覆盖安装，主题设置会保留，一般十几秒完成。"
           )
         ];
+        if (!isPlugin && pluginHasUpdate()) {
+          body.push(
+            h("label", { style: "display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;cursor:pointer" }, [
+              h("input", {
+                type: "checkbox",
+                checked: state.alsoPlugin,
+                disabled: busy(),
+                onChange: function (e) {
+                  state.alsoPlugin = e.target.checked;
+                }
+              }),
+              "同时把 theme-x 助手插件更新到 " + pluginLatest() + "（当前 " + (state.pluginInstalled || VERSION) + "）"
+            ])
+          );
+        }
         if (info.notes) {
           body.push(
             h("div", { style: "font-size:13px;color:#374151" }, [
-              h("div", { style: "font-weight:600;margin-bottom:6px" }, "这一版改了什么"),
+              h("div", { style: "font-weight:600;margin-bottom:6px" }, isPlugin ? "主题 " + info.version + " 的更新说明（插件的改动也写在这里）" : "这一版改了什么"),
               h(
                 "div",
                 {
@@ -172,7 +276,7 @@
           C.VModal,
           {
             ref: modal,
-            title: "更新 theme-x",
+            title: isPlugin ? "更新 theme-x 助手" : "更新 theme-x",
             width: 520,
             layerClosable: false,
             onClose: function () {
@@ -186,10 +290,10 @@
             footer: function () {
               return h(C.VSpace, null, function () {
                 return [
-                  h(C.VButton, { type: "secondary", loading: state.upgrading, onClick: go }, function () {
-                    return state.upgrading ? "正在更新…" : "更新到 " + info.version;
+                  h(C.VButton, { type: "secondary", loading: busy(), onClick: go }, function () {
+                    return busy() ? "正在更新…" : "更新到 " + target;
                   }),
-                  h(C.VButton, { disabled: state.upgrading, onClick: close }, function () {
+                  h(C.VButton, { disabled: busy(), onClick: close }, function () {
                     return "取消";
                   })
                 ];
@@ -246,14 +350,68 @@
     }
   });
 
+  /* ---------------------------------------------------------------- 插件列表里的按钮
+     放在 theme-x 助手那一行的右侧（版本号旁边），有新版才出现；点了不能冒泡，不然会进插件详情 */
+  var PluginListButton = Vue.defineComponent({
+    name: "ThemeXPluginUpdateButton",
+    inheritAttrs: false,
+    props: { plugin: { default: null } },
+    setup: function () {
+      var open = Vue.ref(false);
+      Vue.onMounted(function () {
+        loadPluginInstalled();
+        check(false);
+      });
+      return function () {
+        if (!pluginHasUpdate()) return null;
+        return h(
+          "span",
+          {
+            style: "display:inline-flex",
+            onClick: function (e) {
+              e.stopPropagation();
+            }
+          },
+          [
+            h(
+              C.VButton,
+              {
+                size: "sm",
+                type: "secondary",
+                title: "主题包里带着新版 " + pluginLatest(),
+                onClick: function () {
+                  open.value = true;
+                }
+              },
+              function () {
+                return "更新到 " + pluginLatest();
+              }
+            ),
+            open.value
+              ? h(UpdateModal, {
+                  kind: "plugin",
+                  from: state.pluginInstalled || VERSION,
+                  onClose: function () {
+                    open.value = false;
+                  }
+                })
+              : null
+          ]
+        );
+      };
+    }
+  });
+
   /* ---------------------------------------------------------------- 仪表盘小组件 */
   var Widget = Vue.defineComponent({
     name: "ThemeXUpdateWidget",
     props: { config: { default: null }, editMode: { type: Boolean, default: false }, previewMode: { type: Boolean, default: false } },
     setup: function (props) {
       var open = Vue.ref(false);
+      var openPlugin = Vue.ref(false);
       Vue.onMounted(function () {
         loadInstalled();
+        loadPluginInstalled();
         check(false);
       });
       function row(label, value, color) {
@@ -291,6 +449,7 @@
                   (state.loading ? "0.5" : "1"),
                 onClick: function () {
                   loadInstalled();
+                  loadPluginInstalled();
                   check(true);
                 }
               },
@@ -306,6 +465,27 @@
             row("当前版本", state.installed || "—"),
             row("GitHub 最新", info ? info.version : "—", newer ? "#16a34a" : null),
             h("div", { style: "font-size:12px;line-height:1.5" }, [status]),
+            pluginLatest()
+              ? row("theme-x 助手", (state.pluginInstalled || VERSION) + (pluginHasUpdate() ? " → " + pluginLatest() : "（最新）"), pluginHasUpdate() ? "#16a34a" : null)
+              : null,
+            !newer && pluginHasUpdate()
+              ? h("div", { style: "margin-top:auto;padding-top:4px" }, [
+                  h(
+                    C.VButton,
+                    {
+                      type: "secondary",
+                      size: "sm",
+                      block: true,
+                      onClick: function () {
+                        openPlugin.value = true;
+                      }
+                    },
+                    function () {
+                      return "更新插件到 " + pluginLatest();
+                    }
+                  )
+                ])
+              : null,
             newer
               ? h("div", { style: "margin-top:auto;padding-top:4px" }, [
                   h(
@@ -342,6 +522,15 @@
                   from: state.installed,
                   onClose: function () {
                     open.value = false;
+                  }
+                })
+              : null,
+            openPlugin.value
+              ? h(UpdateModal, {
+                  kind: "plugin",
+                  from: state.pluginInstalled || VERSION,
+                  onClose: function () {
+                    openPlugin.value = false;
                   }
                 })
               : null
@@ -1161,8 +1350,18 @@
     if (!/^\/console(\/|$)/.test(location.pathname)) return;
     setTimeout(function () {
       if (!canManageThemes()) return;
-      Promise.all([check(false), loadInstalled()]).then(function () {
-        if (!hasUpdate(state.installed)) return;
+      Promise.all([check(false), loadInstalled(), loadPluginInstalled()]).then(function () {
+        if (!hasUpdate(state.installed)) {
+          // 主题是最新的、只有插件落后（比如刚手动升过主题）
+          if (!pluginHasUpdate()) return;
+          var pkey = "theme-x-updater:plugin-notified:" + pluginLatest();
+          try {
+            if (sessionStorage.getItem(pkey)) return;
+            sessionStorage.setItem(pkey, "1");
+          } catch (e) {}
+          C.Toast.info("theme-x 助手有新版本 " + pluginLatest() + "（当前 " + state.pluginInstalled + "），到「插件」列表里它那一行点「更新到 " + pluginLatest() + "」", { duration: 10000 });
+          return;
+        }
         var key = "theme-x-updater:notified:" + state.info.version;
         try {
           if (sessionStorage.getItem(key)) return;
@@ -1227,6 +1426,20 @@
             props: { theme: theme },
             label: "theme-x-updater",
             permissions: PERM
+          }
+        ];
+      },
+      // 同样必须同步返回数组；传进来的插件也是个 Ref
+      "plugin:list-item:field:create": function (plugin) {
+        var p = Vue.unref(plugin);
+        if (!p || !p.metadata || p.metadata.name !== PLUGIN) return [];
+        return [
+          {
+            position: "end",
+            priority: 35,
+            component: Vue.markRaw(PluginListButton),
+            props: { plugin: p },
+            permissions: PLUGIN_PERM
           }
         ];
       },

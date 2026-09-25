@@ -34,6 +34,11 @@ import run.halo.app.extension.GroupVersion;
  * 查某个主题在 GitHub 上的最新版本号。
  *
  * <p>GET /apis/console.api.themexupdater.halo.run/v1alpha1/themes/{name}/latest[?refresh=true]
+ * <p>GET /apis/console.api.themexupdater.halo.run/v1alpha1/themes/{name}/plugin-jar
+ *
+ * <p>主题包里 templates/assets/plugins/ 下带着本插件的 jar，顺手读出它的版本号一起返回；
+ * 后台「更新插件」时从 plugin-jar 拿这个 jar，再交给 Halo 自己的「升级插件」接口（上传文件的那个），
+ * 不用服务器再去连 GitHub 的其它域名，也不用等主题先更新。
  *
  * <p>版本号直接从升级要用的那个压缩包里读（包里的 theme.yaml），不走 api.github.com 或
  * raw.githubusercontent.com——国内服务器上这两个经常连不上，而 codeload 是 Halo 自己
@@ -53,6 +58,10 @@ public class ThemeUpdateEndpoint implements CustomEndpoint {
     private static final int MAX_BYTES = 30 * 1024 * 1024;
     private static final int MAX_NOTES = 4000;
 
+    /** 本插件的名字：主题包里 templates/assets/plugins/theme-x-updater.jar 就是它的最新版。 */
+    static final String PLUGIN = "theme-x-updater";
+    private static final int MAX_JAR = 20 * 1024 * 1024;
+
     private static final Pattern NAME = Pattern.compile("(?m)^\\s+name:\\s*[\"']?([A-Za-z0-9._-]+)");
     private static final Pattern VERSION = Pattern.compile("(?m)^\\s+version:\\s*[\"']?([0-9][^\"'\\s#]*)");
 
@@ -63,13 +72,14 @@ public class ThemeUpdateEndpoint implements CustomEndpoint {
 
     private final Map<String, Result> cache = new ConcurrentHashMap<>();
 
-    private record Result(Instant at, Map<String, Object> body, boolean ok) {
+    private record Result(Instant at, Map<String, Object> body, boolean ok, byte[] pluginJar) {
     }
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return RouterFunctions.route()
             .GET("themes/{name}/latest", this::latest)
+            .GET("themes/{name}/plugin-jar", this::pluginJar)
             .build();
     }
 
@@ -88,6 +98,24 @@ public class ThemeUpdateEndpoint implements CustomEndpoint {
         return Mono.fromCallable(() -> lookup(name, uri, refresh))
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap(r -> json(r.ok() ? HttpStatus.OK : HttpStatus.BAD_GATEWAY, r.body()));
+    }
+
+    /** 主题包里带的本插件 jar（最多 10 分钟前下载的那份）。 */
+    private Mono<ServerResponse> pluginJar(ServerRequest request) {
+        String name = request.pathVariable("name");
+        String uri = SOURCES.get(name);
+        if (uri == null) {
+            return json(HttpStatus.NOT_FOUND, Map.of("error", "不认识的主题：" + name));
+        }
+        return Mono.fromCallable(() -> lookup(name, uri, false))
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMap(r -> r.pluginJar() == null
+                ? json(HttpStatus.NOT_FOUND, Map.of("error", r.ok() ? "主题包里没有带插件" : String.valueOf(r.body().get("error"))))
+                : ServerResponse.ok()
+                    .contentType(MediaType.parseMediaType("application/java-archive"))
+                    .header("Cache-Control", "no-store")
+                    .header("Content-Disposition", "attachment; filename=\"" + PLUGIN + ".jar\"")
+                    .bodyValue(r.pluginJar()));
     }
 
     private Mono<ServerResponse> json(HttpStatus status, Map<String, Object> body) {
@@ -141,9 +169,14 @@ public class ThemeUpdateEndpoint implements CustomEndpoint {
             }
             String themeYaml = null;
             String changelog = null;
+            byte[] jar = null;
             try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(zip), StandardCharsets.UTF_8)) {
                 ZipEntry e;
                 while ((e = zin.getNextEntry()) != null) {
+                    if (!e.isDirectory() && e.getName().endsWith("templates/assets/plugins/" + PLUGIN + ".jar")) {
+                        jar = readLimited(zin, MAX_JAR);
+                        continue;
+                    }
                     if (e.isDirectory() || !atRoot(e.getName())) {
                         continue;
                     }
@@ -172,16 +205,41 @@ public class ThemeUpdateEndpoint implements CustomEndpoint {
             if (notes != null) {
                 body.put("notes", notes);
             }
-            return new Result(Instant.now(), body, true);
+            String pluginVersion = jar == null ? null : pluginVersion(jar);
+            if (pluginVersion != null) {
+                body.put("plugin", Map.of("name", PLUGIN, "version", pluginVersion));
+            } else {
+                jar = null; // 读不出版本号的 jar 不拿来升级
+            }
+            return new Result(Instant.now(), body, true, jar);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             body.put("error", "检查被中断");
-            return new Result(Instant.now(), body, false);
+            return new Result(Instant.now(), body, false, null);
         } catch (Exception e) {
             String msg = e.getMessage();
             body.put("error", "连不上 GitHub 或读取失败：" + (msg == null || msg.isBlank() ? e.getClass().getSimpleName() : msg));
-            return new Result(Instant.now(), body, false);
+            return new Result(Instant.now(), body, false, null);
         }
+    }
+
+    /** 插件 jar 根目录下 plugin.yaml 里的版本号；名字不是本插件、读不出来都返回 null。 */
+    static String pluginVersion(byte[] jar) {
+        try (ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(jar), StandardCharsets.UTF_8)) {
+            ZipEntry e;
+            while ((e = zin.getNextEntry()) != null) {
+                if (!"plugin.yaml".equals(e.getName())) {
+                    continue;
+                }
+                String yaml = new String(readLimited(zin, 256 * 1024), StandardCharsets.UTF_8);
+                Matcher n = NAME.matcher(yaml);
+                Matcher v = VERSION.matcher(yaml);
+                return n.find() && PLUGIN.equals(n.group(1)) && v.find() ? v.group(1) : null;
+            }
+        } catch (IOException ignored) {
+            // 坏包就当没有
+        }
+        return null;
     }
 
     /** 压缩包根目录，或者只套了一层目录（codeload 的包就是 theme-x-main/…）。 */

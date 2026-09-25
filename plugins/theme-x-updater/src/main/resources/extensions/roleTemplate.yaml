@@ -12,7 +12,7 @@ metadata:
     rbac.authorization.halo.run/display-name: "检查 theme-x 更新"
 rules:
   - apiGroups: ["console.api.themexupdater.halo.run"]
-    resources: ["themes/latest"]
+    resources: ["themes/latest", "themes/plugin-jar"]
     verbs: ["get"]
 ---
 apiVersion: v1alpha1

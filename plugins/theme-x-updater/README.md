@@ -19,7 +19,14 @@ Halo 插件，给 theme-x 打配合，一个插件装齐（2.0.0 起把原来单
   下载 `https://codeload.github.com/bocmiao/theme-x/zip/refs/heads/main`，从包里的 `theme.yaml` 读版本号，
   再从 `CHANGELOG.md` 里取这个版本的那一节。结果缓存 10 分钟（失败只缓存 1 分钟），`?refresh=true` 强制重查（至少隔 15 秒）。
   只认代码里写死的主题和地址，不接受外部传入的 URL。
-- **权限**：`extensions/roleTemplate.yaml` 把这条接口聚合进 Halo 自带的「主题管理」角色，能管理主题的人才能查。
+- **插件自己的在线更新**（2.1.0 起）：同一个压缩包里的 `templates/assets/plugins/theme-x-updater.jar` 就是插件的最新版，
+  后端顺手读出它根目录 `plugin.yaml` 的版本号放进上面接口的 `plugin.version`，jar 本身跟着结果一起缓存，
+  `GET …/themes/theme-x/plugin-jar` 把它吐出来。前端拿到后调 Halo 的 `consoleApiClient.plugin.plugin.upgradePlugin({name, file})`
+  （后台「⋯ → 升级 → 上传」同一个接口），插件设置保留。服务器只需要能连 codeload——这也是主题更新本来就要求的。
+  入口：插件列表的 `plugin:list-item:field:create`（theme-x 助手那一行版本号旁边）、仪表盘部件、主题更新确认框里的勾选框。
+  `console/main.js` 里的 `VERSION` 常量是读不到插件信息时的兜底，`build.sh` 会检查它和 `plugin.yaml` 一致。
+- **权限**：`extensions/roleTemplate.yaml` 把这两条接口聚合进 Halo 自带的「主题管理」角色，能管理主题的人才能查；
+  真正升级插件还要 Halo 的「插件管理」权限，前端没这个权限就不显示插件的更新按钮。
 - **前端**（`console/main.js`，不经过构建，直接用后台挂在 `window` 上的 Vue 和 Halo 组件）：
   - `theme:list-item:operation:create`：主题列表里 theme-x 那一行的「更新到 x.y.z」按钮和确认框；
   - `console:dashboard:widgets:create`：仪表盘部件「theme-x 更新」；
@@ -93,6 +100,7 @@ bash plugins/theme-x-updater/build.sh
 - `CustomEndpoint` 里的路由写相对路径，Halo 会自动挂到 `/apis/{group}/{version}/` 下面。
 - `META-INF/plugin-components.idx` 列出要注册成 Bean 的类，官方构建插件会自动生成，这里由 `build.sh` 生成。
 - Windows 上测试时，同版本号的插件 jar 被 Halo 占用，直接「升级」会 500；先卸载再装。Linux 服务器没这个问题。
+- `ReactiveExtensionClient.indexedQueryEngine()` 在 2.26 里已经标了「将来删除」（友链体检靠它按 GVK 列出 Link），Halo 大版本升级后要换写法。
 - 编译友链体检要 Jackson 2 和 spring-data-commons（`Sort`），`build.sh` 会从 Halo 的 jar 里补抽；运行时由 Halo 提供。
   Halo 2.26 里 Jackson 2 和 3 并存，插件用的是 2（`com.fasterxml`），接口返回时自己序列化成字符串，不依赖 Halo 用哪个编解码器。
 - 在插件里阻塞调用 `client.fetch(...).block()` 只能放在自己开的线程（或 boundedElastic）里，别在 WebFlux 的事件线程里 block。

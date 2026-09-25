@@ -11,6 +11,13 @@ OUT="$ROOT/build"
 VERSION="$(grep -E '^  version:' "$ROOT/src/main/resources/plugin.yaml" | awk '{print $2}')"
 win() { cygpath -m "$1"; }
 
+# console/main.js 里的 VERSION 常量（读不到插件信息时拿来比版本）必须和 plugin.yaml 一致，不然会一直提示有新版
+JS_VERSION="$(grep -oE 'var VERSION = "[^"]+"' "$ROOT/src/main/resources/console/main.js" | sed -E 's/.*"(.*)"/\1/')"
+if [ "$JS_VERSION" != "$VERSION" ]; then
+  echo "console/main.js 里的 VERSION 常量是 $JS_VERSION，plugin.yaml 是 $VERSION，先改成一样的" >&2
+  exit 1
+fi
+
 # 编译依赖：Halo 插件 API + Spring WebFlux + Reactor（运行时由 Halo 提供，不打进插件）
 if [ ! -f "$LIB/api-2.26.1.jar" ]; then
   mkdir -p "$LIB"

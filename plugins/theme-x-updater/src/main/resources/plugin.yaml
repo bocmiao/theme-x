@@ -15,6 +15,6 @@ spec:
   description: "theme-x 的配套插件，一个装齐：检查主题新版本并一键更新（设置保留）；上传图片时在浏览器里自动转 WebP；「内容 → 友链 RSS」一键给所有友链发现并抓取 RSS（首页「正在关注」靠它）；「内容 → 友链体检」定时用 api.miao.club 检查友链还能不能打开。"
   license:
     - name: MIT
-  version: 2.0.0
+  version: 2.1.0
   settingName: theme-x-updater-settings
   configMapName: theme-x-updater-configmap
