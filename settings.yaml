@@ -319,6 +319,16 @@ spec:
             - label: 不显示
               value: "off"
         - $formkit: select
+          name: outline
+          label: 右栏文章大纲
+          value: "on"
+          help: 宽屏上文章页右栏最上面显示「文章大纲」（正文里的一到四级标题），点一下跳过去，读到哪一段亮哪一条，往下翻时一直钉在搜索框下面。标题少于两个不显示；正文开头那个和文章标题一样的一级标题不算。开着的时候宽屏上正文里的目录不再重复显示；手机没有右栏，还是按上面「文章目录」的设置。
+          options:
+            - label: 显示
+              value: "on"
+            - label: 不显示
+              value: "off"
+        - $formkit: select
           name: read_time
           label: 字数与阅读时长
           value: "on"

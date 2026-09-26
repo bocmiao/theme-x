@@ -36,6 +36,21 @@
       </form>
     </div>
 
+    <!--/* 文章大纲：只在文章页、正文里有两个以上标题时出现（theme.js 的 initOutline 从正文里抓标题）。
+         右栏在无刷新切页时是常驻的，所以卡片一直放在这儿，显示不显示由 JS 按当前页面决定。
+         出现时整页进入「阅读模式」（html 上的 data-reading）：大纲钉在搜索框下面，
+         下面那些卡片这时不再跟随，照常滚走，从大纲底下过去 */-->
+    <nav
+      class="x-card x-outline"
+      data-outline
+      hidden
+      th:if="${theme.config.post?.outline != 'off'}"
+      th:aria-label="#{post.outline}"
+    >
+      <h2 class="x-card-title" th:text="#{post.outline}">文章大纲</h2>
+      <div class="x-outline-list" data-outline-list></div>
+    </nav>
+
     <!--/* 带 is-follow 的小组件会被 CSS 排到下面，由 theme.js 的 initAsideFollow 让它们跟着页面走；
          不带的留在上面随页面滚走。哪些跟随由「右栏 → 跟随滚动的小组件」决定 */-->
     <div class="x-aside-inner" data-aside-inner>

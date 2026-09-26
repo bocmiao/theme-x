@@ -1640,20 +1640,28 @@
   }
 
   /* ------------------------------------------------------------ 目录 */
+  // 正文里的二、三、四级标题，顺手补上 id（目录、大纲、锚点都靠它）
+  function proseHeadings(prose, sel) {
+    var heads = $$(sel || "h2, h3, h4", prose).filter(function (h) {
+      return h.textContent.trim();
+    });
+    heads.forEach(function (h, i) {
+      if (!h.id) h.id = "h-" + i + "-" + h.textContent.trim().replace(/\s+/g, "-").slice(0, 32);
+    });
+    return heads;
+  }
+
   function initToc() {
     var box = $("[data-toc]");
     var list = $("[data-toc-list]");
     var prose = $("[data-prose]");
     if (!box || !list || !prose) return;
 
-    var heads = $$("h2, h3, h4", prose).filter(function (h) {
-      return h.textContent.trim();
-    });
+    var heads = proseHeadings(prose);
     if (heads.length < 2) return;
 
     box.hidden = false;
-    heads.forEach(function (h, i) {
-      if (!h.id) h.id = "h-" + i + "-" + h.textContent.trim().replace(/\s+/g, "-").slice(0, 32);
+    heads.forEach(function (h) {
       var a = document.createElement("a");
       a.href = "#" + h.id;
       a.textContent = h.textContent.trim();
@@ -1687,6 +1695,101 @@
         io.disconnect();
       });
     }
+  }
+
+  /* ------------------------------------------------- 右栏文章大纲
+     文章页正文里有两个以上标题时，右栏最上面出现一张「文章大纲」，并让整页进入阅读模式（html[data-reading]）：
+     大纲钉在搜索框下面，读到哪一段亮哪一条；右栏其余卡片这时不跟随（initAsideFollow 会让开），照常滚走。
+     右栏在无刷新切页时是常驻的，每换一页都重新决定显示不显示。 */
+  function initOutline() {
+    var aside = $(".x-aside");
+    var card = aside && $("[data-outline]", aside);
+    if (!card) return;
+    var list = $("[data-outline-list]", card);
+    var prose = $("[data-prose][data-outline-src]");
+
+    // 一到四级标题都算；有人习惯在正文开头再写一遍文章标题（一级标题），那一条不要
+    var heads = prose ? proseHeadings(prose, "h1, h2, h3, h4") : [];
+    var titleEl = $(".x-detail-title");
+    var title = titleEl ? titleEl.textContent.trim() : "";
+    if (heads.length && heads[0].tagName === "H1" && heads[0].textContent.trim() === title) heads.shift();
+
+    list.textContent = "";
+    if (heads.length < 2) {
+      card.hidden = true;
+      root.removeAttribute("data-reading");
+      asideRemeasure();
+      return;
+    }
+
+    // 缩进按这篇文章里最高的那一级算：全文只用二、三级标题的，二级就顶格
+    var levels = heads.map(function (h) {
+      return +h.tagName.slice(1);
+    });
+    var top = Math.min.apply(null, levels);
+    var links = heads.map(function (h, i) {
+      var a = node("a", "", h.textContent.trim());
+      a.href = "#" + h.id;
+      a.style.setProperty("--indent", levels[i] - top);
+      on(a, "click", function (e) {
+        e.preventDefault();
+        // 标题上有 scroll-margin-top，停下来时正好在吸顶栏下面
+        h.scrollIntoView({ behavior: SCROLL_BEHAVIOR, block: "start" });
+        try {
+          history.replaceState(history.state, "", "#" + h.id);
+        } catch (err) {}
+      });
+      list.appendChild(a);
+      return a;
+    });
+
+    var search = $(".x-search-wrap", aside);
+    // 窄屏右栏不显示、量不出来时按搜索框的常规高度算，之后拉宽窗口也不会压住搜索框
+    root.style.setProperty("--outline-top", (search ? search.offsetHeight || 52 : 12) + "px");
+    card.hidden = false;
+    root.setAttribute("data-reading", "");
+    asideRemeasure();
+
+    // 读到哪儿：最后一个已经滚过吸顶栏下沿的标题
+    var current = -2;
+    function spy() {
+      var line = (parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) || 53) + 24;
+      var idx = -1;
+      for (var i = 0; i < heads.length; i++) {
+        if (heads[i].getBoundingClientRect().top - line > 0) break;
+        idx = i;
+      }
+      if (idx === current) return;
+      current = idx;
+      links.forEach(function (a, j) {
+        a.classList.toggle("is-active", j === idx);
+        if (j === idx) a.setAttribute("aria-current", "location");
+        else a.removeAttribute("aria-current");
+      });
+      // 大纲比屏幕高、自己在滚的时候，让亮着的那条留在看得见的地方（只滚大纲，不动页面）
+      var a = links[idx];
+      if (a && list.scrollHeight > list.clientHeight) {
+        var at = a.offsetTop - list.offsetTop;
+        if (at < list.scrollTop + 8 || at + a.offsetHeight > list.scrollTop + list.clientHeight - 8) {
+          list.scrollTop = Math.max(0, at - list.clientHeight / 3);
+        }
+      }
+    }
+    var ticking = false;
+    onPage(
+      window,
+      "scroll",
+      function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          ticking = false;
+          spy();
+        });
+      },
+      { passive: true }
+    );
+    spy();
   }
 
   /* ------------------------------------------------- 阅读进度与预计时长 */
@@ -2821,6 +2924,9 @@
   //   - 吸顶位置 = 搜索框下沿 - 不跟随那半截的高度，也就是不跟随的部分滚出去之后才开始跟；
   //   - 跟随的部分比视口还高时，往下翻到它的底就停住，往回翻到它的顶停住（X 的右栏就是这样）。
   // 做法是一直 position:sticky，只在滚动时按位移挪 top，并夹在 [minTop, maxTop] 之间。
+  // 右栏跟随那边的「重新量一下」；没开跟随时什么都不做
+  var asideRemeasure = function () {};
+
   function initAsideFollow() {
     var aside = $(".x-aside");
     var inner = aside && $("[data-aside-inner]", aside);
@@ -2837,6 +2943,13 @@
     }
 
     function measure() {
+      // 文章页有大纲时（阅读模式）大纲自己吸住，其余卡片不跟随，照常滚走
+      if (root.hasAttribute("data-reading")) {
+        inner.classList.remove("is-following");
+        inner.style.top = "";
+        top = null;
+        return;
+      }
       if (!aside.offsetWidth) {
         // 窄屏右栏是 display:none，量不了；回到宽屏时 resize 会再进来
         inner.classList.remove("is-following");
@@ -2881,6 +2994,7 @@
       { passive: true }
     );
     on(window, "resize", measure, { passive: true });
+    asideRemeasure = measure;
     // 卡片高度会变：Epic 数据晚到、趋势重排、图片加载、换字号
     if (window.ResizeObserver) new ResizeObserver(measure).observe(inner);
     else on(window, "load", measure);
@@ -4453,6 +4567,7 @@
       enhance(document);
     },
     initToc,
+    initOutline,
     initReading,
     initTabs,
     initTrends,

@@ -118,7 +118,7 @@
             <nav class="x-toc-list" data-toc-list th:aria-label="#{post.toc}"></nav>
           </div>
 
-          <div class="x-prose" data-prose th:utext="${post.content.content}"></div>
+          <div class="x-prose" data-prose data-outline-src th:utext="${post.content.content}"></div>
 
           <!--/* 标签 / 分类 */-->
           <div class="x-tweet-tags" style="margin-top: 16px" th:if="${not #lists.isEmpty(post.tags) or not #lists.isEmpty(post.categories)}">
