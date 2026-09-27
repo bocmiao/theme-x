@@ -2636,17 +2636,97 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
 :root[data-theme="dark"] .x-prose .hljs-type { color: #a48bff; }
 
 /* 代码块右上角的语言标签 */
-.x-code-lang {
-  position: absolute;
-  top: 10px;
-  right: 88px;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  pointer-events: none;
+/* 代码块：主题自己画的框（initCodeBlocks）。顶栏 + 代码区 + 折叠时的「展开全部」 */
+.x-code {
+  margin: 1.5em 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  overflow: hidden;
 }
+.x-code-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 6px 0 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.x-code-lang {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.x-code-tools { display: flex; align-items: center; gap: 2px; }
+.x-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+.x-code-btn iconify-icon { font-size: 1rem; }
+.x-code-btn:hover { background: var(--hover-strong); color: var(--text); }
+.x-code-btn[aria-pressed="true"] { color: var(--accent-text); }
+.x-code-btn.is-done { color: var(--repost); }
+/* shiki 插件往页面里塞了一条 pre:has(code) { filter: blur(10px) !important; padding: 1rem !important }，
+   等它自己画完才撤；代码块改由主题画以后得明着盖掉，不然一直是糊的 */
+.x-prose .x-code pre {
+  filter: none !important;
+  margin: 0;
+  padding: 12px 0 14px !important; /* 左右留白放在每一行上，行尾滚到头也有留白 */
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.x-prose .x-code pre code { display: block; width: max-content; min-width: 100%; }
+.x-code-line { display: block; min-height: 1.6em; padding: 0 16px; }
+/* 行号：用计数器画在每行前面，横着滚的时候跟着代码一起走（Chrome 里钉住的行号会被同一行的文字压在底下，
+   试过 sticky + z-index 不管用）；自动换行时折下来的那几截对齐正文，不对齐行号 */
+.x-code.has-lines code { counter-reset: x-line; }
+.x-code.has-lines .x-code-line { padding-left: 4em; }
+.x-code.has-lines .x-code-line::before {
+  counter-increment: x-line;
+  content: counter(x-line);
+  display: inline-block;
+  width: 3em;
+  margin-left: -4em;
+  margin-right: 1em;
+  text-align: right;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.x-prose .x-code.is-wrap pre code { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 超过 30 行先露 18 行，底下渐隐 */
+.x-code.is-folded pre {
+  max-height: calc(1.6em * 18 + 26px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent);
+  mask-image: linear-gradient(to bottom, #000 65%, transparent);
+}
+.x-code-more {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--accent-text);
+  font-size: 0.866rem;
+  text-align: center;
+  transition: background-color 0.2s var(--ease);
+}
+.x-code-more:hover { background: var(--hover); }
 
 /* ---------------------------------------------------- 搜索结果页 */
 .x-search-results { min-height: 200px; }

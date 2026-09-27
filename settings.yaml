@@ -933,11 +933,31 @@ spec:
           name: code_highlight
           label: 代码语法高亮
           value: "on"
-          help: 页面里有代码块时才会去加载高亮脚本，配色跟着主题的三套背景走
+          help: 页面里有代码块时才会去加载高亮脚本，配色跟着主题的三套背景走；没标语言的代码块会自动识别
           options:
             - label: 开启
               value: "on"
             - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: code_style
+          label: 代码块外观
+          value: "theme"
+          help: 「主题统一画」：顶栏写语言（没标的自动识别），有「自动换行」和「复制」按钮，左边带行号，超过 30 行先折起来，配色跟着三套背景和夜间模式走。装了 shiki 之类的代码高亮插件也由主题来画——插件把代码画在自己的封闭组件里，主题的样式和夜间模式都管不到它。选「交给代码高亮插件」就原样交给插件。
+          options:
+            - label: 主题统一画（推荐）
+              value: theme
+            - label: 交给代码高亮插件
+              value: plugin
+        - $formkit: select
+          name: code_lines
+          label: 代码行号
+          value: "on"
+          help: 只对「主题统一画」的代码块生效；只有一行的代码不显示行号
+          options:
+            - label: 显示
+              value: "on"
+            - label: 不显示
               value: "off"
         - $formkit: select
           name: thumbnails

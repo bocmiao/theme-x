@@ -75,6 +75,8 @@
           }
         }
         root.setAttribute("data-theme", bg);
+        // shiki 这类代码高亮插件只认 data-color-scheme，顺手告诉它深浅
+        root.setAttribute("data-color-scheme", bg === "light" ? "light" : "dark");
         var tc = bg === "dark" ? "#000000" : bg === "dim" ? "#15202b" : "#ffffff";
         var tm = document.querySelectorAll('meta[name="theme-color"]');
         for (var ti = 0; ti < tm.length; ti++) {
@@ -157,6 +159,8 @@
         codeCopy: /*[[${ft?.code_copy}]]*/ "on",
         progress: /*[[${ft?.reading_progress}]]*/ "on",
         codeHighlight: /*[[${ft?.code_highlight}]]*/ "on",
+        codeStyle: /*[[${ft?.code_style}]]*/ "theme",
+        codeLines: /*[[${ft?.code_lines}]]*/ "on",
         restoreScroll: /*[[${ft?.restore_scroll}]]*/ "on",
         highlightCdn:
           /*[[${theme.config.style?.highlight_cdn}]]*/ "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11/highlight.min.js",
@@ -243,6 +247,9 @@
         "js.cycleBg": /*[[#{js.cycleBg}]]*/ "",
         "js.copy": /*[[#{js.copy}]]*/ "",
         "js.copied": /*[[#{js.copied}]]*/ "",
+        "js.codeWrap": /*[[#{js.codeWrap}]]*/ "",
+        "js.codeExpand": /*[[#{js.codeExpand}]]*/ "",
+        "js.codeCollapse": /*[[#{js.codeCollapse}]]*/ "",
         "common.follow": /*[[#{common.follow}]]*/ "",
         "common.following": /*[[#{common.following}]]*/ "",
         "js.unfollow": /*[[#{js.unfollow}]]*/ "",

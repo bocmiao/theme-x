@@ -20,6 +20,9 @@
       }
     );
     out.highlightCdn = raw.highlightCdn || "";
+    // 代码块：theme = 主题自己画（默认）；plugin = 交给 shiki 之类的代码高亮插件
+    out.codeStyle = raw.codeStyle === "plugin" ? "plugin" : "theme";
+    out.codeLines = isOn(raw.codeLines);
     out.linkCards = raw.linkCards === "on";
     var ep = raw.epic || {};
     // 勾选框存的是数组；只认这三个值，顺序固定，一个都没勾就当只勾了 Epic（老配置里没有这一项）
@@ -55,6 +58,7 @@
     bookmarks: "x:bookmarks",
     follow: "x:follow:",
     searchCache: "x:posts-cache",
+    codeWrap: "x:code-wrap",
     epic: "x:epic",
     hot: "x:hot",
     hotTab: "x:hot-tab",
@@ -362,8 +366,14 @@
   }
 
   /* ------------------------------------------------- 显示设置（三套背景） */
+  // 告诉 shiki 这类插件现在是深色还是浅色：它们只认 html 上的 data-color-scheme / .dark，不认主题的 data-theme
+  function syncColorScheme() {
+    root.setAttribute("data-color-scheme", root.getAttribute("data-theme") === "light" ? "light" : "dark");
+  }
+
   function applyTheme(value) {
     root.setAttribute("data-theme", value);
+    syncColorScheme();
     store(KEY.theme, value);
     syncThemeColor(value);
     syncDisplayPanel();
@@ -454,6 +464,7 @@
       var handler = function (e) {
         if (store(KEY.theme)) return;
         root.setAttribute("data-theme", e.matches ? "dark" : "light");
+        syncColorScheme();
         syncDisplayPanel();
       };
       if (mq.addEventListener) mq.addEventListener("change", handler);
@@ -1533,8 +1544,9 @@
   }
 
   /* ---------------------------------------------------------- 代码块复制 */
+  // 「交给代码高亮插件」时的老样子：只在 pre 右上角挂一个悬停出现的复制按钮
   function initCodeCopy(ctx) {
-    if (!CFG.codeCopy) return;
+    if (!CFG.codeCopy || CFG.codeStyle !== "plugin") return;
     $$("[data-prose] pre", ctx).forEach(function (pre) {
       if (pre.querySelector(".x-code-copy")) return;
       var btn = document.createElement("button");
@@ -1593,48 +1605,209 @@
     return hljsPromise;
   }
 
-  /* 站点要是已经装了代码高亮插件（shiki / highlight / prism 之类），
-     就别再上一套，否则两边各渲染各的，配色会打架 */
-  function hasPluginHighlighter() {
-    return !!document.querySelector(
-      'script[src*="/plugins/"][src*="shiki"],' +
-        'script[src*="/plugins/"][src*="highlight"],' +
-        'script[src*="/plugins/"][src*="prism"],' +
-        'link[href*="/plugins/"][href*="shiki"],' +
-        'link[href*="/plugins/"][href*="highlight"]'
-    );
+  /* ---------------------------------------------------------- 代码块
+     默认由主题自己画：顶栏（语言 · 自动换行 · 复制）、行号（横着滚的时候钉在左边）、超过 30 行先折起来，
+     配色跟着三套背景走；没标语言的交给 highlight.js 自动认。
+     站点装了 shiki 之类的插件时，它把代码画在自己的 Shadow DOM 里，主题的样式、夜间模式都够不着，
+     所以把它包的 <shiki-code> 拆回原来的 <pre> 统一画。设置里选「交给代码高亮插件」就不拆、不画。 */
+  var CODE_FOLD = 30;
+  var SHELL_START = /^\s*(?:\$\s+)?(?:curl|wget|npm|npx|pnpm|yarn|git|cd|ls|sudo|docker|pip3?|python3?|brew|apt(?:-get)?|yum|dnf|node|bash|sh|chmod|chown|mkdir|cp|mv|rm|echo|export|ssh|scp|systemctl|kubectl|java|mvn|gradle|go|cargo)\b/;
+  var CODE_SKIP = /^(mermaid|plantuml|puml|math|katex|latex|flow|flowchart|sequence|echarts|chart|abc|graphviz|dot)$/;
+  var CODE_NAMES = {
+    xml: "HTML", html: "HTML", xhtml: "HTML", svg: "SVG", vue: "Vue",
+    js: "JavaScript", javascript: "JavaScript", jsx: "JSX", mjs: "JavaScript",
+    ts: "TypeScript", typescript: "TypeScript", tsx: "TSX",
+    css: "CSS", scss: "SCSS", sass: "Sass", less: "Less", json: "JSON", jsonc: "JSON",
+    bash: "Bash", sh: "Shell", shell: "Shell", zsh: "Shell", console: "Shell", powershell: "PowerShell", ps1: "PowerShell", bat: "Batch", dos: "Batch",
+    python: "Python", py: "Python", java: "Java", kotlin: "Kotlin", kt: "Kotlin", swift: "Swift", go: "Go", golang: "Go",
+    rust: "Rust", rs: "Rust", c: "C", cpp: "C++", "c++": "C++", csharp: "C#", cs: "C#", php: "PHP", ruby: "Ruby", rb: "Ruby",
+    sql: "SQL", yaml: "YAML", yml: "YAML", toml: "TOML", ini: "INI", properties: "Properties",
+    markdown: "Markdown", md: "Markdown", dockerfile: "Dockerfile", docker: "Dockerfile", nginx: "Nginx", diff: "Diff",
+    plaintext: "", text: "", txt: "", plain: "", auto: ""
+  };
+  // 自动识别只在这些常见语言里挑，免得短代码被认成冷门语言
+  var CODE_AUTO = ["xml", "javascript", "typescript", "css", "scss", "json", "bash", "shell", "powershell", "python", "java",
+    "kotlin", "swift", "go", "rust", "c", "cpp", "csharp", "php", "ruby", "sql", "yaml", "ini", "markdown", "dockerfile", "nginx", "diff"];
+
+  function codeLang(code) {
+    var m = (code.className || "").match(/(?:^|\s)(?:language|lang)-([\w+#-]+)/i);
+    return m ? m[1].toLowerCase() : "";
   }
 
-  function initCodeHighlight(ctx) {
-    if (!CFG.codeHighlight || hasPluginHighlighter()) return;
+  function codeLabel(lang) {
+    if (!lang) return "";
+    return CODE_NAMES.hasOwnProperty(lang) ? CODE_NAMES[lang] : lang.charAt(0).toUpperCase() + lang.slice(1);
+  }
 
-    var blocks = $$("[data-prose] pre > code", ctx).filter(function (el) {
-      return !el.hasAttribute("data-hl-ready");
-    });
-    if (!blocks.length) return;
-
-    blocks.forEach(function (el) {
-      el.setAttribute("data-hl-ready", "1");
-      // 语言标签从 class 里刨出来，highlight.js 认的也是这个
-      var m = (el.className || "").match(/(?:language|lang)-([a-z0-9+#-]+)/i);
-      if (m) {
-        var tag = document.createElement("span");
-        tag.className = "x-code-lang";
-        tag.textContent = m[1];
-        el.parentNode.appendChild(tag);
+  // highlight.js 的结果按行切开：跨行的 <span>（多行注释、模板字符串）在行尾先关上，下一行开头原样再打开
+  function splitCodeLines(html) {
+    var lines = [];
+    var cur = "";
+    var open = [];
+    html.replace(/<span[^>]*>|<\/span>|\n|[^<\n]+|</g, function (tok) {
+      if (tok === "\n") {
+        lines.push(cur + open.map(function () { return "</span>"; }).join(""));
+        cur = open.join("");
+      } else {
+        if (tok === "</span>") open.pop();
+        else if (tok.indexOf("<span") === 0) open.push(tok);
+        cur += tok;
       }
+      return "";
+    });
+    lines.push(cur);
+    // 结尾那个换行不算一行
+    if (lines.length > 1 && !lines[lines.length - 1].replace(/<[^>]+>/g, "")) lines.pop();
+    return lines;
+  }
+
+  function paintCode(code, html) {
+    var lines = splitCodeLines(html);
+    code.innerHTML = lines
+      .map(function (l) {
+        return '<span class="x-code-line">' + l + "</span>";
+      })
+      .join("");
+    return lines.length;
+  }
+
+  function codeBtn(icon, text, cls) {
+    var b = node("button", "x-code-btn" + (cls ? " " + cls : ""));
+    b.type = "button";
+    var i = node("iconify-icon");
+    i.setAttribute("icon", icon);
+    i.setAttribute("aria-hidden", "true");
+    b.appendChild(i);
+    if (text) b.appendChild(node("span", "", text));
+    return b;
+  }
+
+  function codeWrapOn() {
+    return store(KEY.codeWrap) === "1";
+  }
+
+  function initCodeBlocks(ctx) {
+    if (CFG.codeStyle === "plugin") return;
+
+    // 先把插件包的壳拆掉：<shiki-code> 里面原样留着作者写的 <pre><code class="language-xx">
+    // 流程图、公式这类主题不画的，留给插件（拆了就没人画了，还会一直顶着插件那层模糊）
+    $$("[data-prose] shiki-code", ctx).forEach(function (el) {
+      var pre = el.querySelector("pre");
+      var inner = pre && pre.querySelector("code");
+      if (pre && !(inner && CODE_SKIP.test(codeLang(inner)))) el.parentNode.replaceChild(pre, el);
     });
 
+    var blocks = [];
+    $$("[data-prose] pre", ctx).forEach(function (pre) {
+      if (pre.__xcode || pre.closest(".x-code")) return;
+      var code = pre.querySelector("code");
+      if (!code) {
+        // 没有 <code> 的裸 <pre>：补一层，后面统一处理
+        code = document.createElement("code");
+        while (pre.firstChild) code.appendChild(pre.firstChild);
+        pre.appendChild(code);
+      }
+      var lang = codeLang(code);
+      if (CODE_SKIP.test(lang)) return; // 流程图、公式这类交给各自的插件
+      var text = code.textContent.replace(/\n$/, "");
+      pre.__xcode = text;
+
+      var box = node("div", "x-code");
+      pre.parentNode.insertBefore(box, pre);
+      var head = node("div", "x-code-head");
+      var label = node("span", "x-code-lang", codeLabel(lang));
+      var tools = node("span", "x-code-tools");
+      var wrapBtn = codeBtn("ri:text-wrap", "", "x-code-wrap");
+      wrapBtn.title = t("js.codeWrap", "自动换行");
+      wrapBtn.setAttribute("aria-label", wrapBtn.title);
+      wrapBtn.setAttribute("aria-pressed", codeWrapOn() ? "true" : "false");
+      on(wrapBtn, "click", function () {
+        var next = !box.classList.contains("is-wrap");
+        store(KEY.codeWrap, next ? "1" : null);
+        // 换行是访客的习惯，一页里所有代码块一起变
+        $$(".x-code").forEach(function (b) {
+          b.classList.toggle("is-wrap", next);
+          var w = $(".x-code-wrap", b);
+          if (w) w.setAttribute("aria-pressed", next ? "true" : "false");
+        });
+      });
+      tools.appendChild(wrapBtn);
+      if (CFG.codeCopy) {
+        var copyBtn = codeBtn("ri:file-copy-line", t("js.copy", "复制"));
+        on(copyBtn, "click", function () {
+          copyText(pre.__xcode).then(
+            function () {
+              copyBtn.classList.add("is-done");
+              $("span", copyBtn).textContent = t("js.copied", "已复制");
+              $("iconify-icon", copyBtn).setAttribute("icon", "ri:check-line");
+              setTimeout(function () {
+                copyBtn.classList.remove("is-done");
+                $("span", copyBtn).textContent = t("js.copy", "复制");
+                $("iconify-icon", copyBtn).setAttribute("icon", "ri:file-copy-line");
+              }, 1800);
+            },
+            function () {
+              toast(t("js.copyFailed", "复制失败"));
+            }
+          );
+        });
+        tools.appendChild(copyBtn);
+      }
+      head.appendChild(label);
+      head.appendChild(tools);
+      box.appendChild(head);
+      box.appendChild(pre);
+      if (codeWrapOn()) box.classList.add("is-wrap");
+
+      // 先按纯文本分好行（高亮脚本晚到也不会跳版），高亮好了再换成带颜色的
+      var count = paintCode(code, escapeHtml(text));
+      if (CFG.codeLines && count > 1) box.classList.add("has-lines");
+      if (count > CODE_FOLD) {
+        box.classList.add("is-folded");
+        var more = node("button", "x-code-more", t("js.codeExpand", "展开全部 {0} 行", count));
+        more.type = "button";
+        on(more, "click", function () {
+          var folded = box.classList.toggle("is-folded");
+          more.textContent = folded ? t("js.codeExpand", "展开全部 {0} 行", count) : t("js.codeCollapse", "收起");
+          // 收起时回到代码块开头，别把人留在一大片空白里
+          if (folded && box.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start", behavior: SCROLL_BEHAVIOR });
+        });
+        box.appendChild(more);
+      }
+      blocks.push({ code: code, lang: lang, label: label, text: text });
+    });
+
+    if (!blocks.length || !CFG.codeHighlight) return;
     loadHljs().then(
       function (hljs) {
-        blocks.forEach(function (el) {
+        var auto = CODE_AUTO.filter(function (l) {
+          return hljs.getLanguage(l);
+        });
+        blocks.forEach(function (b) {
           try {
-            hljs.highlightElement(el);
+            var res = null;
+            var known = b.lang && CODE_NAMES[b.lang] !== "" && hljs.getLanguage(b.lang);
+            if (known) res = hljs.highlight(b.text, { language: b.lang, ignoreIllegals: true });
+            else if ((!b.lang || CODE_NAMES[b.lang] === "") && SHELL_START.test(b.text) && hljs.getLanguage("bash")) {
+              // 一两行的命令自动识别不出来（太短），看开头是不是常见命令
+              res = hljs.highlight(b.text, { language: "bash", ignoreIllegals: true });
+              b.label.textContent = "Shell";
+            } else if (!b.lang || CODE_NAMES[b.lang] === "") {
+              // 没标语言（或者标的是 plaintext）：猜得够有把握才上色，并把猜到的语言写在顶栏上
+              var guess = hljs.highlightAuto(b.text, auto);
+              if (guess.language && guess.relevance >= 5) {
+                res = guess;
+                b.label.textContent = codeLabel(guess.language);
+              }
+            }
+            if (!res) return;
+            paintCode(b.code, res.value);
+            b.code.classList.add("hljs");
           } catch (e) {}
         });
       },
       function () {
-        // 拉不到脚本就保持纯文本，代码块该有的边框和复制按钮都还在
+        // 拉不到高亮脚本就保持纯文本，框、行号、按钮都还在
       }
     );
   }
@@ -4125,8 +4298,8 @@
     enhanceLightboxTargets(ctx);
     buildMediaGrids(ctx);
     enhanceAltBadges(ctx);
+    initCodeBlocks(ctx);
     initCodeCopy(ctx);
-    initCodeHighlight(ctx);
     initImageFade(ctx);
     sweepFallback(ctx);
   }
