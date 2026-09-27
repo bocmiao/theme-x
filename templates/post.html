@@ -54,11 +54,16 @@
                xname=${pf?.byline == 'author' ? (owner?.displayName ?: (pf?.name ?: site.title)) : (pf?.name ?: (owner?.displayName ?: site.title))},
                xhandle=${pf?.byline == 'author' ? (owner?.name ?: (pf?.handle ?: 'blog')) : (pf?.handle ?: (owner?.name ?: 'blog'))},
                xavatar=${pf?.byline == 'author' ? (owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))},
-               relatedCount=${#conversions.convert(po?.related_count ?: (4), 'java.lang.Integer')}"
+               relatedCount=${#conversions.convert(po?.related_count ?: (4), 'java.lang.Integer')},
+               postSummary=${#annotations.getOrDefault(post, 'theme-x.halo.run/summary', 'default')},
+               postToc=${#annotations.getOrDefault(post, 'theme-x.halo.run/toc', 'default')},
+               postAside=${#annotations.getOrDefault(post, 'theme-x.halo.run/aside', 'default')},
+               postRelated=${#annotations.getOrDefault(post, 'theme-x.halo.run/related', 'default')},
+               relatedLimit=${postRelated == 'off' ? 0 : (postRelated == 'on' and relatedCount < 1 ? 4 : relatedCount)}"
     >
       <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
 
-      <main class="x-feed" id="main" tabindex="-1">
+      <main class="x-feed" id="main" tabindex="-1" th:attr="data-post-toc=${postToc},data-post-aside=${postAside}">
         <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
 
         <header class="x-header">
@@ -68,6 +73,11 @@
             </button>
             <div class="x-header-title" th:text="#{common.posts}">帖子</div>
             <div class="x-header-actions">
+              <button class="x-icon-button x-mobile-toc-trigger" type="button" data-mobile-toc-trigger
+                      popovertarget="x-mobile-toc" hidden th:if="${postToc == 'on' or (postToc != 'off' and po?.toc == 'all')}"
+                      th:aria-label="#{post.toc}">
+                <iconify-icon icon="ri:list-unordered" aria-hidden="true"></iconify-icon>
+              </button>
               <button
                 class="x-icon-button"
                 type="button"
@@ -80,6 +90,17 @@
             </div>
           </div>
         </header>
+
+        <nav id="x-mobile-toc" class="x-mobile-toc" data-mobile-toc popover="auto"
+             th:if="${postToc == 'on' or (postToc != 'off' and po?.toc == 'all')}" th:aria-label="#{post.toc}">
+          <div class="x-mobile-toc-head">
+            <strong th:text="#{post.toc}">目录</strong>
+            <button class="x-icon-button" type="button" data-mobile-toc-close th:aria-label="#{post.closeToc}">
+              <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+            </button>
+          </div>
+          <div class="x-mobile-toc-list" data-mobile-toc-list></div>
+        </nav>
 
         <article class="x-tweet x-tweet--detail" th:attr="data-post-name=${post.metadata.name}">
           <!--/* 作者行 */-->
@@ -110,13 +131,13 @@
           <th:block th:replace="~{modules/series :: card(post=${post})}"></th:block>
 
           <section class="x-summary" aria-labelledby="x-summary-title"
-                   th:if="${po?.summary != 'off' and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
+                   th:if="${(postSummary == 'on' or (postSummary != 'off' and po?.summary != 'off')) and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
             <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span th:text="#{post.summary}">AI摘要</span></h2>
             <p th:text="${post.status.excerpt}"></p>
           </section>
 
           <!--/* 目录由 JS 从正文标题里抓；「所有文章都显示」时普通文章才有 */-->
-          <div class="x-toc x-toc--inline" data-toc hidden th:if="${po?.toc == 'all'}">
+          <div class="x-toc x-toc--inline" data-toc hidden th:if="${postToc == 'on' or (postToc != 'off' and po?.toc == 'all')}">
             <button class="x-toc-title" type="button" data-toc-toggle>
               <iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>
               <span th:text="#{post.toc}">目录</span>
@@ -184,41 +205,7 @@
           </a>
         </nav>
 
-        <!--/* 相关文章：同分类优先，没有分类就退回最新 */-->
-        <th:block th:if="${relatedCount > 0}">
-          <th:block
-            th:with="cat=${#lists.isEmpty(post.categories) ? null : post.categories[0]},
-                     pool=${cat != null
-                       ? postFinder.listByCategory(1, relatedCount + 1, cat.metadata.name)
-                       : postFinder.list(1, relatedCount + 1)},
-                     related=${pool.items.?[metadata.name != '__${post.metadata.name}__']}"
-          >
-            <section th:if="${not #lists.isEmpty(related)}">
-              <h2 class="x-section-head" th:text="#{action.related}">更多相关内容</h2>
-              <th:block th:each="rp, st : ${related}">
-                <th:block th:if="${st.index &lt; relatedCount}">
-                  <a class="x-explore-row" th:href="@{${rp.status.permalink}}">
-                    <div class="x-explore-row-main">
-                      <div class="x-explore-row-sub" th:text="${#temporals.format(rp.spec.publishTime, #messages.msg('format.date'))}"></div>
-                      <div class="x-explore-row-title" th:text="${rp.spec.title}"></div>
-                      <div class="x-explore-row-sub" th:with="cnt=${rp.stats.visit ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></div>
-                    </div>
-                    <img
-                      class="x-explore-thumb"
-                      th:if="${not #strings.isEmpty(rp.spec.cover)}"
-                      th:src="${theme.config.features?.thumbnails != 'off'}
-                        ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${rp.spec.cover},size='s')}
-                        : ${rp.spec.cover}"
-                      th:attr="data-fallback=${theme.config.features?.thumbnails != 'off'} ? ${rp.spec.cover} : null"
-                      alt=""
-                      loading="lazy"
-                    />
-                  </a>
-                </th:block>
-              </th:block>
-            </section>
-          </th:block>
-        </th:block>
+        <th:block th:replace="~{modules/related :: related(post=${post}, count=${relatedLimit})}"></th:block>
 
         <!--/* 回复 */-->
         <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">

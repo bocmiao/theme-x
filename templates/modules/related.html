@@ -1,0 +1,33 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="related(post, count)" th:if="${count > 0}">
+  <!--/* 同分类优先，没有分类就退回最新 */-->
+  <th:block
+    th:with="cat=${#lists.isEmpty(post.categories) ? null : post.categories[0]},
+             pool=${cat != null
+               ? postFinder.listByCategory(1, count + 1, cat.metadata.name)
+               : postFinder.list(1, count + 1)},
+             items=${pool.items.?[metadata.name != '__${post.metadata.name}__']}"
+  >
+    <section th:if="${not #lists.isEmpty(items)}">
+      <h2 class="x-section-head" th:text="#{action.related}">更多相关内容</h2>
+      <th:block th:each="rp, st : ${items}">
+        <a class="x-explore-row" th:if="${st.index &lt; count}" th:href="@{${rp.status.permalink}}">
+          <div class="x-explore-row-main">
+            <div class="x-explore-row-sub" th:text="${#temporals.format(rp.spec.publishTime, #messages.msg('format.date'))}"></div>
+            <div class="x-explore-row-title" th:text="${rp.spec.title}"></div>
+            <div class="x-explore-row-sub" th:with="cnt=${rp.stats.visit ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></div>
+          </div>
+          <img
+            class="x-explore-thumb"
+            th:if="${not #strings.isEmpty(rp.spec.cover)}"
+            th:src="${theme.config.features?.thumbnails != 'off'}
+              ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${rp.spec.cover},size='s')}
+              : ${rp.spec.cover}"
+            th:attr="data-fallback=${theme.config.features?.thumbnails != 'off'} ? ${rp.spec.cover} : null"
+            alt=""
+            loading="lazy"
+          />
+        </a>
+      </th:block>
+    </section>
+  </th:block>
+</th:block>

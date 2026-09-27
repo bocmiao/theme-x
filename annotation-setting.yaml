@@ -1,0 +1,56 @@
+apiVersion: v1alpha1
+kind: AnnotationSetting
+metadata:
+  name: theme-x-post-display
+spec:
+  targetRef:
+    group: content.halo.run
+    kind: Post
+  formSchema:
+    - $formkit: select
+      name: theme-x.halo.run/summary
+      label: AI 摘要卡片
+      value: default
+      help: 只控制文章页的卡片；文章摘要仍由 Halo 或摘要生成器保存。
+      options:
+        - label: 跟随主题设置
+          value: default
+        - label: 显示
+          value: on
+        - label: 隐藏
+          value: off
+    - $formkit: select
+      name: theme-x.halo.run/toc
+      label: 文章目录
+      value: default
+      help: 显示时从正文标题生成目录；少于两个标题时不出现。
+      options:
+        - label: 跟随主题设置
+          value: default
+        - label: 显示
+          value: on
+        - label: 隐藏
+          value: off
+    - $formkit: select
+      name: theme-x.halo.run/aside
+      label: 桌面右栏
+      value: default
+      options:
+        - label: 跟随主题布局
+          value: default
+        - label: 显示
+          value: on
+        - label: 隐藏
+          value: off
+    - $formkit: select
+      name: theme-x.halo.run/related
+      label: 相关文章
+      value: default
+      help: 普通文章默认跟随主题设置；长文默认不显示，可在这里单独开启。
+      options:
+        - label: 跟随主题设置
+          value: default
+        - label: 显示
+          value: on
+        - label: 隐藏
+          value: off

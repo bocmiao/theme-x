@@ -53,11 +53,17 @@
                owner=${post.owner},
                xname=${pf?.byline == 'author' ? (owner?.displayName ?: (pf?.name ?: site.title)) : (pf?.name ?: (owner?.displayName ?: site.title))},
                xhandle=${pf?.byline == 'author' ? (owner?.name ?: (pf?.handle ?: 'blog')) : (pf?.handle ?: (owner?.name ?: 'blog'))},
-               xavatar=${pf?.byline == 'author' ? (owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))}"
+               xavatar=${pf?.byline == 'author' ? (owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))},
+               postSummary=${#annotations.getOrDefault(post, 'theme-x.halo.run/summary', 'default')},
+               postToc=${#annotations.getOrDefault(post, 'theme-x.halo.run/toc', 'default')},
+               postAside=${#annotations.getOrDefault(post, 'theme-x.halo.run/aside', 'default')},
+               postRelated=${#annotations.getOrDefault(post, 'theme-x.halo.run/related', 'default')},
+               relatedCount=${#conversions.convert(theme.config.post?.related_count ?: (4), 'java.lang.Integer')},
+               relatedLimit=${postRelated == 'on' ? (relatedCount < 1 ? 4 : relatedCount) : 0}"
     >
       <th:block th:replace="~{modules/nav :: nav(current='home')}"></th:block>
 
-      <main class="x-feed" id="main" tabindex="-1">
+      <main class="x-feed" id="main" tabindex="-1" th:attr="data-post-toc=${postToc},data-post-aside=${postAside}">
         <th:block th:replace="~{modules/mobile :: top(root=false)}"></th:block>
 
         <header class="x-header">
@@ -75,6 +81,11 @@
               <div class="x-header-sub" data-read-time th:if="${theme.config.post?.read_time != 'off'}"></div>
             </div>
             <div class="x-header-actions">
+              <button class="x-icon-button x-mobile-toc-trigger" type="button" data-mobile-toc-trigger
+                      popovertarget="x-mobile-toc" hidden th:if="${postToc == 'on' or (postToc != 'off' and theme.config.post?.toc != 'off')}"
+                      th:aria-label="#{post.toc}">
+                <iconify-icon icon="ri:list-unordered" aria-hidden="true"></iconify-icon>
+              </button>
               <button
                 class="x-icon-button"
                 type="button"
@@ -87,6 +98,17 @@
             </div>
           </div>
         </header>
+
+        <nav id="x-mobile-toc" class="x-mobile-toc" data-mobile-toc popover="auto"
+             th:if="${postToc == 'on' or (postToc != 'off' and theme.config.post?.toc != 'off')}" th:aria-label="#{post.toc}">
+          <div class="x-mobile-toc-head">
+            <strong th:text="#{post.toc}">目录</strong>
+            <button class="x-icon-button" type="button" data-mobile-toc-close th:aria-label="#{post.closeToc}">
+              <iconify-icon icon="ri:close-line" aria-hidden="true"></iconify-icon>
+            </button>
+          </div>
+          <div class="x-mobile-toc-list" data-mobile-toc-list></div>
+        </nav>
 
         <!--/* 封面当头图 */-->
         <div class="x-media" data-count="1" th:if="${not #strings.isEmpty(post.spec.cover)}" style="margin: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--border)">
@@ -128,13 +150,13 @@
         </div>
 
         <section class="x-summary x-summary--longform" aria-labelledby="x-summary-title"
-                 th:if="${theme.config.post?.summary != 'off' and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
+                 th:if="${(postSummary == 'on' or (postSummary != 'off' and theme.config.post?.summary != 'off')) and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
           <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span th:text="#{post.summary}">AI摘要</span></h2>
           <p th:text="${post.status.excerpt}"></p>
         </section>
 
         <!--/* 目录由 JS 从正文标题里抓 */-->
-        <div class="x-toc" data-toc hidden th:if="${theme.config.post?.toc != 'off'}">
+        <div class="x-toc" data-toc hidden th:if="${postToc == 'on' or (postToc != 'off' and theme.config.post?.toc != 'off')}">
           <button class="x-toc-title" type="button" data-toc-toggle>
             <iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>
             <span th:text="#{post.toc}">目录</span>
@@ -183,6 +205,8 @@
             </span>
           </a>
         </nav>
+
+        <th:block th:replace="~{modules/related :: related(post=${post}, count=${relatedLimit})}"></th:block>
 
         <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">
           <th:block th:replace="~{modules/tweet :: commentsHead(count=${post.stats.comment})}"></th:block>

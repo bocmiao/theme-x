@@ -42,7 +42,7 @@
       data-outline
       hidden
       open
-      th:if="${theme.config.post?.outline != 'off'}"
+      th:attr="data-outline-default=${theme.config.post?.outline ?: 'on'}"
     >
       <summary class="x-card-title x-outline-toggle">
         <span th:text="#{post.outline}">文章大纲</span>

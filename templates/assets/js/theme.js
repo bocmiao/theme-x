@@ -1829,6 +1829,9 @@
   function initToc() {
     var box = $("[data-toc]");
     var list = $("[data-toc-list]");
+    var mobile = $("[data-mobile-toc]");
+    var mobileList = mobile && $("[data-mobile-toc-list]", mobile);
+    var mobileTrigger = $("[data-mobile-toc-trigger]");
     var prose = $("[data-prose]");
     if (!box || !list || !prose) return;
 
@@ -1837,12 +1840,29 @@
 
     box.hidden = false;
     heads.forEach(function (h) {
-      var a = document.createElement("a");
-      a.href = "#" + h.id;
-      a.textContent = h.textContent.trim();
-      a.setAttribute("data-level", h.tagName.slice(1));
-      list.appendChild(a);
+      [list, mobileList].forEach(function (target) {
+        if (!target) return;
+        var a = document.createElement("a");
+        a.href = "#" + h.id;
+        a.textContent = h.textContent.trim();
+        a.setAttribute("data-level", h.tagName.slice(1));
+        if (target === mobileList) {
+          on(a, "click", function (e) {
+            e.preventDefault();
+            mobile.hidePopover();
+            h.scrollIntoView({ behavior: SCROLL_BEHAVIOR, block: "start" });
+            try { history.replaceState(history.state, "", "#" + h.id); } catch (err) {}
+          });
+        }
+        target.appendChild(a);
+      });
     });
+
+    if (mobile && mobileTrigger && mobile.showPopover) {
+      mobileTrigger.hidden = false;
+      $("main.x-feed").setAttribute("data-mobile-toc-ready", "");
+      on($("[data-mobile-toc-close]", mobile), "click", function () { mobile.hidePopover(); });
+    }
 
     on($("[data-toc-toggle]"), "click", function () {
       box.classList.toggle("is-collapsed");
@@ -1850,7 +1870,7 @@
 
     // 滚动到哪儿就点亮哪一条
     if ("IntersectionObserver" in window) {
-      var links = $$("a", list);
+      var links = $$("a", list).concat(mobileList ? $$("a", mobileList) : []);
       var io = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (entry) {
@@ -1879,10 +1899,14 @@
     var card = aside && $("[data-outline]", aside);
     if (!card) return;
     var list = $("[data-outline-list]", card);
+    var page = $("main.x-feed");
     var prose = $("[data-prose][data-outline-src]");
 
     // 一到四级标题都算；有人习惯在正文开头再写一遍文章标题（一级标题），那一条不要
-    var heads = prose ? proseHeadings(prose, "h1, h2, h3, h4") : [];
+    var heads = prose && page && page.getAttribute("data-post-toc") !== "off" &&
+      page.getAttribute("data-post-aside") !== "off" &&
+      (page.getAttribute("data-post-toc") === "on" || card.getAttribute("data-outline-default") !== "off")
+      ? proseHeadings(prose, "h1, h2, h3, h4") : [];
     var titleEl = $(".x-detail-title");
     var title = titleEl ? titleEl.textContent.trim() : "";
     if (heads.length && heads[0].tagName === "H1" && heads[0].textContent.trim() === title) heads.shift();
