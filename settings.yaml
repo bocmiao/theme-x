@@ -950,6 +950,16 @@ spec:
             - label: 交给代码高亮插件
               value: plugin
         - $formkit: select
+          name: code_wrap
+          label: 长代码行默认自动换行
+          value: "on"
+          help: 开着的话，长的代码行折到下一行显示，不出现横向滚动条；访客可以在代码块右上角自己切换，切过之后按访客的习惯来。只对「主题统一画」的代码块生效
+          options:
+            - label: 自动换行
+              value: "on"
+            - label: 不换行（横向滚动）
+              value: "off"
+        - $formkit: select
           name: code_lines
           label: 代码行号
           value: "on"

@@ -2686,8 +2686,17 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
   border: 0;
   border-radius: 0;
   background: transparent;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+}
+/* 横向滚动条：不要系统那种带箭头的粗条。WebKit 内核画一根 6px 的细线，平时透明，鼠标移到代码块上才显出来；
+   Firefox 只认 scrollbar-width / scrollbar-color——Chrome 121 以后一旦设了这两个就不认 ::-webkit-scrollbar，
+   又变回带箭头的样子，所以只给不支持 ::-webkit-scrollbar 的浏览器设 */
+.x-prose .x-code pre::-webkit-scrollbar { height: 6px; }
+.x-prose .x-code pre::-webkit-scrollbar-track { background: transparent; }
+.x-prose .x-code pre::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.x-prose .x-code pre::-webkit-scrollbar-thumb { border-radius: 3px; background: transparent; }
+.x-prose .x-code:hover pre::-webkit-scrollbar-thumb { background: var(--border-strong); }
+@supports not selector(::-webkit-scrollbar) {
+  .x-prose .x-code pre { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 }
 .x-prose .x-code pre code { display: block; width: max-content; min-width: 100%; }
 .x-code-line { display: block; min-height: 1.6em; padding: 0 16px; }

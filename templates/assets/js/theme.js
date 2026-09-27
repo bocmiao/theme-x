@@ -23,6 +23,7 @@
     // 代码块：theme = 主题自己画（默认）；plugin = 交给 shiki 之类的代码高亮插件
     out.codeStyle = raw.codeStyle === "plugin" ? "plugin" : "theme";
     out.codeLines = isOn(raw.codeLines);
+    out.codeWrap = isOn(raw.codeWrap); // 长代码默认自动换行（访客自己点过就按访客的来）
     out.linkCards = raw.linkCards === "on";
     var ep = raw.epic || {};
     // 勾选框存的是数组；只认这三个值，顺序固定，一个都没勾就当只勾了 Epic（老配置里没有这一项）
@@ -1683,7 +1684,8 @@
   }
 
   function codeWrapOn() {
-    return store(KEY.codeWrap) === "1";
+    var v = store(KEY.codeWrap);
+    return v === "1" ? true : v === "0" ? false : CFG.codeWrap;
   }
 
   function initCodeBlocks(ctx) {
@@ -1723,7 +1725,7 @@
       wrapBtn.setAttribute("aria-pressed", codeWrapOn() ? "true" : "false");
       on(wrapBtn, "click", function () {
         var next = !box.classList.contains("is-wrap");
-        store(KEY.codeWrap, next ? "1" : null);
+        store(KEY.codeWrap, next ? "1" : "0");
         // 换行是访客的习惯，一页里所有代码块一起变
         $$(".x-code").forEach(function (b) {
           b.classList.toggle("is-wrap", next);
