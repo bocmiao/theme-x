@@ -21,7 +21,7 @@
   var h = Vue.h;
 
   var PLUGIN = "theme-x-updater";
-  var VERSION = "2.2.0"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
+  var VERSION = "2.2.1"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];

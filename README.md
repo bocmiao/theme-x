@@ -685,4 +685,10 @@ XTheme.formatCount(12840); // "1.3万"
 
 ## License
 
-MIT
+Copyright (C) 2026 Miao
+
+theme-x（包括 `plugins/` 下的 theme-x 助手插件）以 [GNU 通用公共许可证第 3 版](LICENSE)或（由你选择）任何更新的版本发布，
+即 `GPL-3.0-or-later`。可以自由使用、修改和再分发；再分发（包括修改后的版本）时须以同样的协议公开源代码，并保留版权和协议声明。
+本程序不提供任何担保，详见 [LICENSE](LICENSE)。
+
+1.27.1 之前的版本以 MIT 协议发布，已经按 MIT 拿到的那些副本仍适用 MIT。
