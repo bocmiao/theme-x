@@ -6,6 +6,7 @@ spec:
   targetRef:
     group: content.halo.run
     kind: Post
+  # 选项值一律加引号：裸写的 on / off 会被 Halo 读成布尔值，存下来变成 "true" / "false"，模板就认不出了
   formSchema:
     - $formkit: select
       name: theme-x.halo.run/summary
@@ -16,9 +17,9 @@ spec:
         - label: 跟随主题设置
           value: default
         - label: 显示
-          value: on
+          value: "on"
         - label: 隐藏
-          value: off
+          value: "off"
     - $formkit: select
       name: theme-x.halo.run/toc
       label: 文章目录
@@ -28,9 +29,9 @@ spec:
         - label: 跟随主题设置
           value: default
         - label: 显示
-          value: on
+          value: "on"
         - label: 隐藏
-          value: off
+          value: "off"
     - $formkit: select
       name: theme-x.halo.run/aside
       label: 桌面右栏
@@ -39,9 +40,9 @@ spec:
         - label: 跟随主题布局
           value: default
         - label: 显示
-          value: on
+          value: "on"
         - label: 隐藏
-          value: off
+          value: "off"
     - $formkit: select
       name: theme-x.halo.run/related
       label: 相关文章
@@ -51,9 +52,9 @@ spec:
         - label: 跟随主题设置
           value: default
         - label: 显示
-          value: on
+          value: "on"
         - label: 隐藏
-          value: off
+          value: "off"
     - $formkit: text
       name: theme-x.halo.run/download-github
       label: 资源下载 · GitHub 地址

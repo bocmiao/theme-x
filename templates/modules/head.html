@@ -23,10 +23,10 @@
     >
       <link th:if="${theme.config.seo?.canonical != 'off' and canonicalUrl != null}" rel="canonical" th:href="${canonicalUrl}" />
 
-      <!--/* Halo 注入首页、文章、独立页面、分类和标签的 description；主题只补其他页面。 */-->
+      <!--/* Halo 会注入首页（配了 SEO 描述时）、文章、独立页面和分类的 description；标签页它不管（2.26 实测），由主题补上。 */-->
       <meta
         name="description"
-        th:if="${not #strings.isEmpty(desc) and not (#strings.startsWith(_templateId ?: '', 'post') or #strings.startsWith(_templateId ?: '', 'page') or #strings.startsWith(_templateId ?: '', 'category') or _templateId == 'tag') and not (_templateId == 'index' and not #strings.isEmpty(site.seo?.description))}"
+        th:if="${not #strings.isEmpty(desc) and not (#strings.startsWith(_templateId ?: '', 'post') or #strings.startsWith(_templateId ?: '', 'page') or #strings.startsWith(_templateId ?: '', 'category')) and not (_templateId == 'index' and not #strings.isEmpty(site.seo?.description))}"
         th:content="${desc}"
       />
       <th:block th:with="socialDesc=${#strings.isEmpty(desc) ? (#strings.isEmpty(site.seo?.description) ? site.subtitle : site.seo.description) : desc}">

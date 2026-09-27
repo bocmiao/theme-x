@@ -55,10 +55,14 @@
                xname=${pf?.byline == 'author' ? (owner?.displayName ?: (pf?.name ?: site.title)) : (pf?.name ?: (owner?.displayName ?: site.title))},
                xhandle=${pf?.byline == 'author' ? (owner?.name ?: (pf?.handle ?: 'blog')) : (pf?.handle ?: (owner?.name ?: 'blog'))},
                xavatar=${pf?.byline == 'author' ? (owner?.avatar ?: (pf?.avatar ?: '/themes/theme-x/assets/images/avatar.svg')) : (pf?.avatar ?: (owner?.avatar ?: (site.logo ?: '/themes/theme-x/assets/images/avatar.svg')))},
-               postSummary=${#annotations.getOrDefault(post, 'theme-x.halo.run/summary', 'default')},
-               postToc=${#annotations.getOrDefault(post, 'theme-x.halo.run/toc', 'default')},
-               postAside=${#annotations.getOrDefault(post, 'theme-x.halo.run/aside', 'default')},
-               postRelated=${#annotations.getOrDefault(post, 'theme-x.halo.run/related', 'default')},
+               postSummaryRaw=${#annotations.getOrDefault(post, 'theme-x.halo.run/summary', 'default')},
+               postSummary=${postSummaryRaw == 'true' ? 'on' : (postSummaryRaw == 'false' ? 'off' : postSummaryRaw)},
+               postTocRaw=${#annotations.getOrDefault(post, 'theme-x.halo.run/toc', 'default')},
+               postToc=${postTocRaw == 'true' ? 'on' : (postTocRaw == 'false' ? 'off' : postTocRaw)},
+               postAsideRaw=${#annotations.getOrDefault(post, 'theme-x.halo.run/aside', 'default')},
+               postAside=${postAsideRaw == 'true' ? 'on' : (postAsideRaw == 'false' ? 'off' : postAsideRaw)},
+               postRelatedRaw=${#annotations.getOrDefault(post, 'theme-x.halo.run/related', 'default')},
+               postRelated=${postRelatedRaw == 'true' ? 'on' : (postRelatedRaw == 'false' ? 'off' : postRelatedRaw)},
                relatedCount=${#conversions.convert(theme.config.post?.related_count ?: (4), 'java.lang.Integer')},
                relatedLimit=${postRelated == 'on' ? (relatedCount < 1 ? 4 : relatedCount) : 0}"
     >

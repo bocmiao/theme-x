@@ -159,7 +159,8 @@ body {
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-img { max-width: 100%; border-style: none; }
+/* height: auto：<img> 上的 width / height 属性只用来提前占好比例，真正的高度按宽度等比算；写了具体高度的样式照样生效 */
+img { max-width: 100%; height: auto; border-style: none; }
 
 button {
   font: inherit;
