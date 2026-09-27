@@ -3,6 +3,7 @@
 把 Halo 博客变成 X（原 Twitter）。左栏导航、中间 600px 时间线、右栏搜索与趋势，
 三套背景配六种强调色，无限滚动、键盘快捷键、图片灯箱一并还原。
 
+- **演示站点**：[blog.miao.club](https://blog.miao.club)（作者自己的博客，一直跑着最新版）
 - Halo 版本要求：`>= 2.20.0`（在 Halo 2.26.1 上实测通过）
 - 图标依赖 [iconify](https://iconify.design)（CDN 可在「外观 → 图标脚本地址」里换）
 

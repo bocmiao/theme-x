@@ -137,10 +137,15 @@
 
           <section class="x-summary" aria-labelledby="x-summary-title"
                    th:if="${(postSummary == 'on' or (postSummary != 'off' and po?.summary != 'off')) and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
-            <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span th:text="#{post.summary}">AI摘要</span></h2>
+            <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span
+              th:with="aiOn=${themeXHelper != null and themeXHelper.aiExcerpt()}"
+              th:text="${aiOn and post.spec.excerpt?.autoGenerate == true} ? #{post.summary} : #{post.summaryPlain}"
+            >AI摘要</span></h2>
             <p th:text="${post.status.excerpt}"></p>
           </section>
 
+          <!--/* 摘要卡片的标题：theme-x 助手的 AI 摘要生成器开着、而且这篇是「自动生成摘要」时叫「AI摘要」，
+               否则（Halo 自带的截取正文开头、手写的摘要、没装插件）叫「摘要」 */-->
           <!--/* 目录由 JS 从正文标题里抓；「所有文章都显示」时普通文章才有 */-->
           <div class="x-toc x-toc--inline" data-toc hidden th:if="${postToc == 'on' or (postToc != 'off' and po?.toc == 'all')}">
             <button class="x-toc-title" type="button" data-toc-toggle>

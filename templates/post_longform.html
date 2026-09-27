@@ -156,7 +156,10 @@
 
         <section class="x-summary x-summary--longform" aria-labelledby="x-summary-title"
                  th:if="${(postSummary == 'on' or (postSummary != 'off' and theme.config.post?.summary != 'off')) and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
-          <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span th:text="#{post.summary}">AI摘要</span></h2>
+          <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span
+              th:with="aiOn=${themeXHelper != null and themeXHelper.aiExcerpt()}"
+              th:text="${aiOn and post.spec.excerpt?.autoGenerate == true} ? #{post.summary} : #{post.summaryPlain}"
+            >AI摘要</span></h2>
           <p th:text="${post.status.excerpt}"></p>
         </section>
 
