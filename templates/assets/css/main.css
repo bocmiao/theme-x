@@ -1573,6 +1573,25 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
 .x-post-nav-label { display: block; color: var(--text-secondary); font-size: 0.866rem; }
 .x-post-nav-title { display: block; font-weight: 700; }
 
+.x-downloads { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.x-downloads-list a {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-weight: 600;
+}
+.x-downloads-list a + a, .x-downloads-code + a { border-top: 1px solid var(--border); }
+.x-downloads-list a:hover { background: var(--hover); text-decoration: none; }
+.x-downloads-list a iconify-icon { font-size: 20px; color: var(--accent-text); }
+.x-downloads-list a iconify-icon:last-child { color: var(--text-secondary); }
+.x-downloads-list a span { min-width: 0; overflow-wrap: anywhere; }
+.x-downloads-code { margin: 0; padding: 0 16px 12px 52px; color: var(--text-secondary); font-size: 0.866rem; }
+.x-downloads-code code { margin-left: 8px; color: var(--text); user-select: all; }
+
 .x-section-head {
   display: flex;
   align-items: center;

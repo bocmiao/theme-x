@@ -1,0 +1,33 @@
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="downloads(post)"
+  th:with="githubRaw=${#strings.trim(#annotations.getOrDefault(post, 'theme-x.halo.run/download-github', ''))},
+           baiduRaw=${#strings.trim(#annotations.getOrDefault(post, 'theme-x.halo.run/download-baidu', ''))},
+           otherRaw=${#strings.trim(#annotations.getOrDefault(post, 'theme-x.halo.run/download-other', ''))}">
+  <th:block th:with="github=${#strings.startsWith(#strings.toLowerCase(githubRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(githubRaw), 'http://') ? githubRaw : null},
+                     baidu=${#strings.startsWith(#strings.toLowerCase(baiduRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(baiduRaw), 'http://') ? baiduRaw : null},
+                     other=${#strings.startsWith(#strings.toLowerCase(otherRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(otherRaw), 'http://') ? otherRaw : null}">
+    <section class="x-downloads" th:if="${github != null or baidu != null or other != null}" aria-labelledby="x-downloads-title">
+      <h2 class="x-section-head" id="x-downloads-title" th:text="#{post.downloads}">资源下载</h2>
+      <div class="x-downloads-list">
+        <a th:if="${github != null}" th:href="${github}" target="_blank" rel="noopener noreferrer external">
+          <iconify-icon icon="ri:github-fill" aria-hidden="true"></iconify-icon>
+          <span>GitHub</span>
+          <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
+        </a>
+        <a th:if="${baidu != null}" th:href="${baidu}" target="_blank" rel="noopener noreferrer external">
+          <iconify-icon icon="ri:cloud-line" aria-hidden="true"></iconify-icon>
+          <span th:text="#{post.baiduNetdisk}">百度网盘</span>
+          <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
+        </a>
+        <p class="x-downloads-code" th:if="${baidu != null and not #strings.isEmpty(#strings.trim(#annotations.getOrDefault(post, 'theme-x.halo.run/download-baidu-code', '')))}">
+          <span th:text="#{post.extractCode}">提取码</span>
+          <code th:text="${#annotations.getOrDefault(post, 'theme-x.halo.run/download-baidu-code', '')}"></code>
+        </p>
+        <a th:if="${other != null}" th:href="${other}" target="_blank" rel="noopener noreferrer external">
+          <iconify-icon icon="ri:download-cloud-2-line" aria-hidden="true"></iconify-icon>
+          <span th:text="${#strings.isEmpty(#strings.trim(#annotations.getOrDefault(post, 'theme-x.halo.run/download-other-label', ''))) ? #messages.msg('post.otherDownload') : #annotations.getOrDefault(post, 'theme-x.halo.run/download-other-label', '')}">其他下载</span>
+          <iconify-icon icon="ri:external-link-line" aria-hidden="true"></iconify-icon>
+        </a>
+      </div>
+    </section>
+  </th:block>
+</th:block>

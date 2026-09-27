@@ -54,3 +54,23 @@ spec:
           value: on
         - label: 隐藏
           value: off
+    - $formkit: text
+      name: theme-x.halo.run/download-github
+      label: 资源下载 · GitHub 地址
+      help: 填完整的 https:// 链接；留空则不显示 GitHub 按钮。
+    - $formkit: text
+      name: theme-x.halo.run/download-baidu
+      label: 资源下载 · 百度网盘地址
+      help: 填自己的分享链接；留空则不显示百度网盘按钮。
+    - $formkit: text
+      name: theme-x.halo.run/download-baidu-code
+      label: 资源下载 · 百度网盘提取码
+      help: 有百度网盘地址时才会显示。
+    - $formkit: text
+      name: theme-x.halo.run/download-other
+      label: 资源下载 · 其他地址
+      help: 可填 Gitee、其他网盘等完整的 https:// 链接。
+    - $formkit: text
+      name: theme-x.halo.run/download-other-label
+      label: 资源下载 · 其他入口名称
+      help: 例如 Gitee、夸克网盘；留空时显示「其他下载」。

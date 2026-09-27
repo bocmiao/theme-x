@@ -182,6 +182,8 @@
           <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
         </article>
 
+        <th:block th:replace="~{modules/downloads :: downloads(post=${post})}"></th:block>
+
         <th:block th:replace="~{modules/tip :: tipButton(place='post')}"></th:block>
 
         <!--/* 上一篇 / 下一篇 */-->

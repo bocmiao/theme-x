@@ -184,6 +184,8 @@
           </div>
         </div>
 
+        <th:block th:replace="~{modules/downloads :: downloads(post=${post})}"></th:block>
+
         <th:block th:replace="~{modules/tip :: tipButton(place='post')}"></th:block>
 
         <nav
