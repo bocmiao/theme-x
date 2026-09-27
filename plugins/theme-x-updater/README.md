@@ -8,6 +8,7 @@ Halo 插件，给 theme-x 打配合，一个插件装齐（2.0.0 起把原来单
    填好开启并立刻抓一次——首页那个「正在关注」标签页就靠这些数据。
 3. **友链体检**（1.2.0 起）：菜单「内容 → 友链体检」，定时用 api.miao.club 的「网站可用性检测」把友链挨个查一遍，
    列出正常 / 打不开 / 跳到别的网站的，连续几次打不开的标成「失联」。只出报告，不改友链。
+5. **写作助手**（2.2.0 起）：菜单「内容 → 写作助手」，新文章别名按日期编号（`20260927-001`），勾「自动生成摘要」时用 AI 写摘要。
 4. **上传自动转 WebP**（2.0.0 起并进来）：后台上传图片前，在浏览器里把 PNG / JPEG 转成 WebP，服务器上什么都不用装。
 
 怎么装、怎么用见主题的 README。
@@ -77,6 +78,26 @@ Halo 2.26 本身没有任何图片格式转换（缩略图用 Thumbnailator，�
 **和旧插件并存**：旧的 `webp-upload` 插件还在、而且先加载了（`window.__webpUpload` 已经有了）的话，这边不再包第二层。
 进后台时（有管理插件权限）检测到旧插件就弹框：先把它 `basic` 分组的设置搬到这边的 `webp` 分组（字段名一样），
 再 `DELETE /apis/plugin.halo.run/v1alpha1/plugins/webp-upload`。一个浏览器会话只问一次。
+
+### 写作助手
+
+- **别名编号**（前端 `console/main.js` 的 `slugNumbering`）：再包一层 `XMLHttpRequest.prototype.send`，
+  后台（`api.console.halo.run`）和个人中心（`uc.api.content.halo.run`）新建、保存文章的 POST / PUT，还有「文章设置」走的
+  `PUT content.halo.run/v1alpha1/posts/{name}`，请求体里的 `spec.slug` 是 13 位时间戳（Halo 别名策略选「时间戳」时生成的）
+  就换成「日期-序号」再发。序号问后端 `GET …/slugs/-/next?date=yyyyMMdd`（`WritingEndpoint` 扫一遍所有文章的别名取最大号 +1）。
+  编辑器手里的旧时间戳在同一个会话里映射到同一个编号（sessionStorage），实测保存后编辑器的设置框也会刷成新别名。
+- **AI 摘要**：`AiExcerptGenerator` 实现 Halo 的 `ExcerptGenerator` 扩展点（`extensions/extensionDefinition.yaml` 声明，
+  名字 `theme-x-ai-excerpt`，扩展点 `excerpt-generator` 是 SINGLETON），选中与否记在系统 ConfigMap 的
+  `extensionPointEnabled` 里，写作助手页面的开关就是改它。Halo 的 `PostReconciler` 按正文 sha256 记在注解 `checksum/content` 上，
+  正文没变就不调生成器；它 `blockOptional(10 秒)` 等结果，超时整轮重试——所以模型请求放在自己的线程池里跑、`Mono.fromFuture(f, true)` 不跟着取消，
+  结果按「配置 + 正文」缓存在内存里，重试时直接拿；同一份正文同时只发一次请求。失败退回截取正文开头。
+  「让已有文章重新生成」就是去掉 `checksum/content` 注解，Halo 会挨个重新生成。
+- **调用**（`AiSummarizer`）：OpenAI 兼容 `POST {baseUrl}/chat/completions`，`Authorization: Bearer`，
+  system 里写要求、user 里放标题标签和正文（去掉 HTML、代码块换成「[代码]」、最多 1.2 万字）；
+  回来的内容去掉 `<think>`、Markdown、引号、「摘要：」前缀，压成一段。
+- **权限**：`slugs/next` 聚合进 `role-template-manage-posts` 和 `role-template-post-contributor`（写文章的人都要用）；
+  `writing` 那几个改系统设置的接口聚合进 `role-template-manage-plugins`。
+- 编译 `ExcerptGenerator` 要 pf4j（它继承 `org.pf4j.ExtensionPoint`），`build.sh` 会从 Halo 的 jar 里补抽 pf4j 和 slf4j-api。
 
 ## 构建
 

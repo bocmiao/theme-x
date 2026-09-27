@@ -31,3 +31,38 @@ rules:
   - apiGroups: ["console.api.themexupdater.halo.run"]
     resources: ["linkhealth"]
     verbs: ["get", "list", "create"]
+---
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-theme-x-slug-next
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    # 能写文章的人（后台文章管理、个人中心投稿）保存时要问下一个编号
+    rbac.authorization.halo.run/aggregate-to-role-template-manage-posts: "true"
+    rbac.authorization.halo.run/aggregate-to-role-template-post-contributor: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Posts Management"
+    rbac.authorization.halo.run/display-name: "文章别名按日期编号"
+rules:
+  - apiGroups: ["console.api.themexupdater.halo.run"]
+    resources: ["slugs/next"]
+    verbs: ["get", "list"]
+---
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-theme-x-writing
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    # 改的是系统设置（别名策略、摘要生成器），跟着「插件管理」走
+    rbac.authorization.halo.run/aggregate-to-role-template-manage-plugins: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Plugins Management"
+    rbac.authorization.halo.run/display-name: "写作助手"
+rules:
+  - apiGroups: ["console.api.themexupdater.halo.run"]
+    resources: ["writing", "writing/slug-strategy", "writing/ai-activate", "writing/ai-test", "writing/ai-regenerate"]
+    verbs: ["get", "list", "create"]

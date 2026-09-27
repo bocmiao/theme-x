@@ -35,6 +35,10 @@ if [ ! -f "$LIB/jackson-databind-2.21.5.jar" ]; then
     "BOOT-INF/lib/jackson-databind-2.21.5.jar" "BOOT-INF/lib/jackson-core-2.21.5.jar" "BOOT-INF/lib/jackson-annotations-2.21.jar" \
     "BOOT-INF/lib/spring-data-commons-*.jar")
 fi
+# 写作助手：AI 摘要实现的是 Halo 的扩展点（继承 pf4j 的 ExtensionPoint），还要打日志（运行时都由 Halo 提供）
+if [ ! -f "$LIB/pf4j-3.15.0.jar" ]; then
+  (cd "$LIB" && unzip -q -o -j "$HALO_JAR" "BOOT-INF/lib/slf4j-api-2.0.18.jar" "BOOT-INF/lib/pf4j-3.15.0.jar")
+fi
 
 # javac 的参数全部写进 @argfile（每行一个，带空格的路径加引号）
 {

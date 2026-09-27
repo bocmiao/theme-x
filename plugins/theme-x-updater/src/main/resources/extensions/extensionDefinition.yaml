@@ -1,0 +1,9 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: ExtensionDefinition
+metadata:
+  name: theme-x-ai-excerpt
+spec:
+  className: run.halo.themexupdater.AiExcerptGenerator
+  extensionPointName: excerpt-generator
+  displayName: "AI 摘要（theme-x 助手）"
+  description: "用你在「插件 → theme-x 助手 → 设置 → AI 摘要」里填的大模型接口写文章摘要；没填或调用失败时退回正文开头。"

@@ -8,6 +8,7 @@
       首页那个「正在关注」标签页就靠这些数据
    5. 菜单「内容 → 友链体检」：看后端定时检查友链的报告
    6. 上传自动转 WebP：上传前在浏览器里把 PNG / JPEG 转成 WebP（2.0.0 起从单独的插件并进来）
+   7. 菜单「内容 → 写作助手」：新文章别名按日期编号（20260927-001）、AI 写摘要（2.2.0 起）
 
    排查 WebP 用：控制台里看 `window.__webpUpload.seen`，每次上传都会记一条（地址、是否命中、转换结果）。 */
 (function () {
@@ -20,7 +21,7 @@
   var h = Vue.h;
 
   var PLUGIN = "theme-x-updater";
-  var VERSION = "2.1.0"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
+  var VERSION = "2.2.0"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];
@@ -1270,6 +1271,107 @@
     if (window.console && console.info) console.info("[webp-upload] 已就绪（" + log.version + "）：上传 PNG / JPEG 会自动转成 WebP");
   })();
 
+  /* ---------------------------------------------------------------- 文章别名按日期编号
+     Halo 的「别名生成策略」选「时间戳」时，新文章的别名是 13 位毫秒时间戳。保存文章的请求发出去之前，
+     把它换成「日期-当天序号」（20260927-001），日期就取自这个时间戳，序号问后端要当天下一个没用过的。
+     自己手填的别名不会是 13 位数字，不受影响；已经发过的文章别名早就不是时间戳了，也不受影响。
+     编辑器手里那份表单可能还拿着原来的时间戳，之后再保存时同一个时间戳换成同一个编号（记在这次浏览器会话里）。 */
+  var SLUG_NEXT = "/apis/console.api.themexupdater.halo.run/v1alpha1/slugs/-/next";
+  (function slugNumbering() {
+    var TS = /^\d{13}$/;
+    var MAP_KEY = "theme-x-updater:slug-map";
+    var enabled = true;
+    var map = {};
+    try {
+      map = JSON.parse(sessionStorage.getItem(MAP_KEY) || "{}") || {};
+    } catch (e) {}
+
+    fetch("/apis/api.console.halo.run/v1alpha1/plugins/" + PLUGIN + "/json-config", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" }
+    })
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (json) {
+        if (json && json.slug && json.slug.enabled === "off") enabled = false;
+      })
+      .catch(function () {});
+
+    // 后台（console）和个人中心（uc）新建、保存文章的几个接口
+    function isPostWrite(method, url) {
+      try {
+        var p = new URL(String(url || ""), location.href);
+        if (p.origin !== location.origin) return false;
+        if (method === "POST") return /\/apis\/(api\.console\.halo\.run|uc\.api\.content\.halo\.run)\/v1alpha1\/posts\/?$/.test(p.pathname);
+        if (method === "PUT") return /\/apis\/(api\.console\.halo\.run|uc\.api\.content\.halo\.run|content\.halo\.run)\/v1alpha1\/posts\/[^/]+\/?$/.test(p.pathname);
+      } catch (e) {}
+      return false;
+    }
+
+    // 请求体里的文章：后台是 { post, content }，个人中心和「文章设置」直接是 Post
+    function postOf(data) {
+      if (data && data.post && data.post.spec) return data.post;
+      if (data && data.kind === "Post" && data.spec) return data;
+      return null;
+    }
+
+    function pad(n) {
+      return (n < 10 ? "0" : "") + n;
+    }
+
+    function numberFor(ts) {
+      if (map[ts]) return Promise.resolve(map[ts]);
+      var d = new Date(Number(ts));
+      var date = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+      return fetch(SLUG_NEXT + "?date=" + date, { credentials: "same-origin", headers: { Accept: "application/json" } })
+        .then(function (r) {
+          return r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status));
+        })
+        .then(function (b) {
+          if (!b || !b.slug) throw new Error("no slug");
+          map[ts] = b.slug;
+          try {
+            sessionStorage.setItem(MAP_KEY, JSON.stringify(map));
+          } catch (e) {}
+          return b.slug;
+        });
+    }
+
+    var open = XMLHttpRequest.prototype.open;
+    var send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__slugWrite = isPostWrite(String(method || "").toUpperCase(), url);
+      return open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+      var xhr = this;
+      var args = arguments;
+      if (!enabled || !xhr.__slugWrite || typeof body !== "string") return send.apply(xhr, args);
+      var data;
+      try {
+        data = JSON.parse(body);
+      } catch (e) {
+        return send.apply(xhr, args);
+      }
+      var post = postOf(data);
+      if (!post || !TS.test(String(post.spec.slug || ""))) return send.apply(xhr, args);
+      numberFor(String(post.spec.slug))
+        .then(
+          function (slug) {
+            post.spec.slug = slug;
+            args[0] = JSON.stringify(data);
+          },
+          function () {
+            // 问不到编号就原样保存（还是时间戳），不耽误写文章
+          }
+        )
+        .then(function () {
+          send.apply(xhr, args);
+        });
+    };
+  })();
+
   /* ---------------------------------------------------------------- 请走旧的 WebP 插件
      2.0.0 之前「上传自动转 WebP」是单独一个插件（webp-upload）。还装着的话弹一次框：
      把它的设置搬过来，然后替站长卸载它。点「以后再说」这次浏览器会话里就不再问。 */
@@ -1336,6 +1438,196 @@
         return null;
       });
   }
+
+  /* ---------------------------------------------------------------- 写作助手页面
+     两件事的状态和开关：别名按日期编号（要 Halo 的别名策略是「时间戳」）、AI 摘要（要选成 Halo 的摘要生成器）。 */
+  var WRITING = "/apis/console.api.themexupdater.halo.run/v1alpha1/writing";
+
+  var WritingPage = Vue.defineComponent({
+    name: "ThemeXWriting",
+    setup: function () {
+      var st = Vue.ref(null);
+      var next = Vue.ref("");
+      var busy = Vue.ref("");
+      var testText = Vue.ref("");
+      var result = Vue.ref(null);
+
+      function load() {
+        var d = new Date();
+        var date = d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+        return Promise.all([
+          ax().get(WRITING).then(function (r) {
+            st.value = r.data;
+          }),
+          ax()
+            .get(SLUG_NEXT, { params: { date: date } })
+            .then(function (r) {
+              next.value = (r.data && r.data.slug) || "";
+            })
+            .catch(function () {})
+        ]).catch(function (e) {
+          C.Toast.error("读不到状态：" + errorText(e));
+        });
+      }
+      Vue.onMounted(load);
+
+      function run(name, fn) {
+        busy.value = name;
+        return fn()
+          .catch(function (e) {
+            C.Toast.error(errorText(e));
+          })
+          .then(function () {
+            busy.value = "";
+          });
+      }
+
+      function setStrategy() {
+        return run("strategy", function () {
+          return ax()
+            .post(WRITING + "/-/slug-strategy")
+            .then(function () {
+              C.Toast.success("别名生成策略已改成「时间戳」，新文章保存时会换成日期编号");
+              return load();
+            });
+        });
+      }
+
+      function activate(on) {
+        return run("activate", function () {
+          return ax()
+            .post(WRITING + "/-/ai-activate", { on: on })
+            .then(function () {
+              C.Toast.success(on ? "摘要生成器已经换成 AI" : "已改回 Halo 自带的摘要生成器");
+              return load();
+            });
+        });
+      }
+
+      function test() {
+        result.value = null;
+        return run("test", function () {
+          return ax()
+            .post(WRITING + "/-/ai-test", { text: testText.value })
+            .then(function (r) {
+              result.value = r.data;
+            })
+            .catch(function (e) {
+              var d = e && e.response && e.response.data;
+              result.value = d && d.error ? d : { error: errorText(e) };
+            });
+        });
+      }
+
+      function regenerate() {
+        C.Dialog.warning({
+          title: "让已有文章用 AI 重新生成摘要？",
+          description:
+            "只动勾着「自动生成摘要」的文章，自己手写的摘要不碰。每篇都会调一次模型（按用量计费），文章多的话要等几分钟才能全部换好。",
+          confirmText: "重新生成",
+          cancelText: "取消",
+          onConfirm: function () {
+            return run("regen", function () {
+              return ax()
+                .post(WRITING + "/-/ai-regenerate")
+                .then(function (r) {
+                  C.Toast.success("已经安排 " + ((r.data && r.data.count) || 0) + " 篇文章重新生成，稍等一会儿刷新文章列表看看");
+                });
+            });
+          }
+        });
+      }
+
+      function card(title, children) {
+        return h("div", { style: "background:#fff;border-radius:8px;outline:1px solid #eaecf0;overflow:hidden;margin-bottom:16px" }, [
+          h("div", { style: "padding:12px 16px;border-bottom:1px solid #eaecf0;font-weight:600;font-size:14px" }, title),
+          h("div", { style: "padding:12px 16px;font-size:13px;line-height:1.8;color:#374151" }, children)
+        ]);
+      }
+      function line(label, value, color) {
+        return h("div", { style: "display:flex;gap:12px" }, [
+          h("span", { style: "flex:0 0 120px;color:#6b7280" }, label),
+          h("span", { style: "flex:1;min-width:0;word-break:break-all;color:" + (color || "#111827") }, value)
+        ]);
+      }
+      function btn(text, onClick, opts) {
+        return h(
+          C.VButton,
+          Object.assign({ size: "sm", loading: busy.value === (opts && opts.key), disabled: !!busy.value, onClick: onClick }, opts && opts.props),
+          function () {
+            return text;
+          }
+        );
+      }
+
+      return function () {
+        var d = st.value;
+        var ai = (d && d.ai) || {};
+        var strategyOk = d && d.slugStrategy === "timestamp";
+        var names = { generateByTitle: "根据标题", timestamp: "时间戳", shortUUID: "短 UUID", UUID: "UUID" };
+        return h("div", null, [
+          h(C.VPageHeader, { title: "写作助手" }, {
+            icon: function () {
+              return h(C.IconBookRead || C.IconLink);
+            }
+          }),
+          h("div", { style: "margin:16px;max-width:860px" }, !d
+            ? [h(C.VLoading)]
+            : [
+                card("文章别名按日期编号", [
+                  h("div", { style: "color:#6b7280;margin-bottom:8px" },
+                    "新文章保存时，别名从时间戳换成「日期-当天序号」，比如 20260927-001。自己手填的别名不动，已经发过的文章也不动。"),
+                  line("插件开关", d.slugEnabled ? "开着" : "关着（插件设置 → 文章别名编号）", d.slugEnabled ? "#15803d" : "#b45309"),
+                  line("Halo 的别名策略", (names[d.slugStrategy] || d.slugStrategy) + (strategyOk ? "" : "（要改成「时间戳」才生效）"), strategyOk ? "#15803d" : "#b45309"),
+                  next.value ? line("今天下一篇", next.value) : null,
+                  strategyOk ? null : h("div", { style: "margin-top:8px" }, [btn("把别名策略改成「时间戳」", setStrategy, { key: "strategy", props: { type: "secondary" } })])
+                ]),
+                card("AI 摘要", [
+                  h("div", { style: "color:#6b7280;margin-bottom:8px" },
+                    "文章设置里勾着「自动生成摘要」时，用你配置的大模型写摘要（OpenAI 兼容接口：DeepSeek、通义千问、Kimi、智谱、硅基流动等）。只在正文改过之后才重新生成，不会每次保存都调。模型没配或者调用失败时，退回正文开头。"),
+                  line("接口", ai.baseUrl || "没填", ai.baseUrl ? null : "#b45309"),
+                  line("模型", ai.model || "没填", ai.model ? null : "#b45309"),
+                  line("API Key", ai.hasKey ? "已填" : "没填", ai.hasKey ? "#15803d" : "#b45309"),
+                  line("摘要长度", (ai.length || 120) + " 字左右"),
+                  line("Halo 摘要生成器", ai.active ? "已经换成 AI（theme-x 助手）" : "还是 Halo 自带的（截取正文开头）", ai.active ? "#15803d" : "#6b7280"),
+                  h("div", { style: "color:#6b7280;margin:4px 0 8px" }, "接口地址、Key、模型在「插件 → theme-x 助手 → 设置 → AI 摘要」里填。"),
+                  h("div", { style: "display:flex;flex-wrap:wrap;gap:8px" }, [
+                    ai.active
+                      ? btn("改回 Halo 自带的", function () { activate(false); }, { key: "activate" })
+                      : btn("用 AI 生成摘要", function () { activate(true); }, { key: "activate", props: { type: "secondary", disabled: !!busy.value || !ai.ready } }),
+                    btn("让已有文章重新生成", regenerate, { key: "regen", props: { disabled: !!busy.value || !ai.active } })
+                  ]),
+                  h("div", { style: "margin-top:16px;font-weight:600" }, "试一下"),
+                  h("textarea", {
+                    value: testText.value,
+                    onInput: function (e) {
+                      testText.value = e.target.value;
+                    },
+                    rows: 4,
+                    placeholder: "贴一段文章进来试试；留空就用一段内置的示例",
+                    style: "display:block;width:100%;margin:6px 0 8px;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;line-height:1.6;resize:vertical"
+                  }),
+                  btn("生成摘要", test, { key: "test", props: { disabled: !!busy.value || !ai.ready } }),
+                  result.value
+                    ? h(
+                        "div",
+                        {
+                          style:
+                            "margin-top:10px;padding:10px 12px;border-radius:6px;background:" +
+                            (result.value.error ? "#fef2f2;color:#b91c1c" : "#f0fdf4;color:#14532d")
+                        },
+                        [
+                          h("div", null, result.value.error ? "失败：" + result.value.error : result.value.summary),
+                          result.value.ms != null ? h("div", { style: "margin-top:4px;opacity:.7;font-size:12px" }, "用时 " + (result.value.ms / 1000).toFixed(1) + " 秒") : null
+                        ]
+                      )
+                    : null
+                ])
+              ])
+        ]);
+      };
+    }
+  });
 
   /* ---------------------------------------------------------------- 进后台时的提示 */
   function canManageThemes() {
@@ -1410,6 +1702,20 @@
             searchable: true,
             permissions: ["plugin:links:manage"],
             menu: { name: "友链体检", group: "content", icon: Vue.markRaw(C.IconLink), priority: 53 }
+          }
+        }
+      },
+      {
+        parentName: "Root",
+        route: {
+          path: "/theme-x/writing",
+          name: "ThemeXWriting",
+          component: Vue.markRaw(WritingPage),
+          meta: {
+            title: "写作助手",
+            searchable: true,
+            permissions: ["system:plugins:manage"],
+            menu: { name: "写作助手", group: "content", icon: Vue.markRaw(C.IconBookRead || C.IconLink), priority: 54 }
           }
         }
       }

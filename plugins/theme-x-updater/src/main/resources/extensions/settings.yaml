@@ -78,3 +78,45 @@ spec:
           name: apiKey
           label: api.miao.club 的 API Key（可选）
           help: 不填也能用：匿名每个 IP 每天 100 次、每分钟 20 次，一轮最多查 90 条友链。友链更多的话去 api.miao.club 注册一个 Key 填在这里（每天 1 万次）。
+    - group: slug
+      label: 文章别名编号
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 新文章的别名按日期编号
+          value: "on"
+          help: 开着的话，新文章保存时，别名从时间戳换成「20260927-001」这样的日期加当天序号。前提是 Halo 的「系统 → 设置 → 文章设置 → 别名生成策略」选的是「时间戳」（「内容 → 写作助手」里可以一键改）。你自己手填的别名不动；已经发过的文章也不动。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+    - group: ai
+      label: AI 摘要
+      formSchema:
+        - $formkit: text
+          name: baseUrl
+          label: 接口地址
+          value: "https://api.deepseek.com"
+          help: OpenAI 兼容的接口地址（后面不用带 /chat/completions）。常见的：DeepSeek https://api.deepseek.com ；通义千问 https://dashscope.aliyuncs.com/compatible-mode/v1 ；Kimi https://api.moonshot.cn/v1 ；智谱 https://open.bigmodel.cn/api/paas/v4 ；硅基流动 https://api.siliconflow.cn/v1 ；OpenAI https://api.openai.com/v1
+        - $formkit: password
+          name: apiKey
+          label: API Key
+          help: 在上面那家服务的控制台里申请。只存在你自己的 Halo 里，由服务器去调用，不会发给访客。
+        - $formkit: text
+          name: model
+          label: 模型名
+          value: "deepseek-chat"
+          help: 比如 deepseek-chat、qwen-plus、moonshot-v1-8k、glm-4-flash。写摘要用便宜、快的模型就够了。
+        - $formkit: number
+          name: length
+          label: 摘要长度（字）
+          number: integer
+          min: 40
+          max: 400
+          value: 120
+        - $formkit: textarea
+          name: style
+          label: 额外要求（可选）
+          rows: 3
+          help: 会附在给模型的要求后面，比如「语气轻松一点」「最后一句说说适合谁读」。
