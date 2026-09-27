@@ -276,6 +276,16 @@ spec:
             - label: 只要标题
               value: title
         - $formkit: select
+          name: summary
+          label: 正文顶部显示摘要
+          value: "on"
+          help: 显示文章保存的摘要；启用 theme-x 助手的 AI 摘要生成器后，这里显示 AI 生成的内容。没有摘要的文章不显示。
+          options:
+            - label: 显示
+              value: "on"
+            - label: 隐藏
+              value: "off"
+        - $formkit: select
           name: post_nav
           label: 上一篇 / 下一篇
           value: "on"

@@ -109,6 +109,12 @@
 
           <th:block th:replace="~{modules/series :: card(post=${post})}"></th:block>
 
+          <section class="x-summary" aria-labelledby="x-summary-title"
+                   th:if="${po?.summary != 'off' and not #strings.isEmpty(#strings.trim(post.status.excerpt ?: ''))}">
+            <h2 id="x-summary-title"><iconify-icon icon="ri:article-line" aria-hidden="true"></iconify-icon><span th:text="#{post.summary}">文章摘要</span></h2>
+            <p th:text="${post.status.excerpt}"></p>
+          </section>
+
           <!--/* 目录由 JS 从正文标题里抓；「所有文章都显示」时普通文章才有 */-->
           <div class="x-toc x-toc--inline" data-toc hidden th:if="${po?.toc == 'all'}">
             <button class="x-toc-title" type="button" data-toc-toggle>

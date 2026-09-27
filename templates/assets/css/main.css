@@ -1493,6 +1493,26 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
   font-weight: 800;
 }
 
+.x-summary {
+  margin: 16px 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-subtle);
+}
+.x-summary--longform { margin: 0 16px 16px; }
+.x-summary h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 0.933rem;
+  font-weight: 700;
+}
+.x-summary h2 iconify-icon { color: var(--accent-text); font-size: 1.2em; }
+.x-summary p { margin: 0; color: var(--text); font-size: 0.933rem; line-height: 1.65; overflow-wrap: anywhere; }
+
 .x-detail-meta {
   display: flex;
   flex-wrap: wrap;
