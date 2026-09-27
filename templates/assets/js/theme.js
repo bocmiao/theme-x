@@ -1873,9 +1873,7 @@
   }
 
   /* ------------------------------------------------- 右栏文章大纲
-     文章页正文里有两个以上标题时，右栏最上面出现一张「文章大纲」，并让整页进入阅读模式（html[data-reading]）：
-     大纲钉在搜索框下面，读到哪一段亮哪一条；右栏其余卡片这时不跟随（initAsideFollow 会让开），照常滚走。
-     右栏在无刷新切页时是常驻的，每换一页都重新决定显示不显示。 */
+     文章页正文里有两个以上标题时显示；右栏在无刷新切页时常驻，每页重新填内容。 */
   function initOutline() {
     var aside = $(".x-aside");
     var card = aside && $("[data-outline]", aside);
@@ -1918,9 +1916,6 @@
       return a;
     });
 
-    var search = $(".x-search-wrap", aside);
-    // 窄屏右栏不显示、量不出来时按搜索框的常规高度算，之后拉宽窗口也不会压住搜索框
-    root.style.setProperty("--outline-top", (search ? search.offsetHeight || 52 : 12) + "px");
     card.hidden = false;
     root.setAttribute("data-reading", "");
     asideRemeasure();
@@ -1943,7 +1938,7 @@
       });
       // 大纲比屏幕高、自己在滚的时候，让亮着的那条留在看得见的地方（只滚大纲，不动页面）
       var a = links[idx];
-      if (a && list.scrollHeight > list.clientHeight) {
+      if (a && card.open && list.scrollHeight > list.clientHeight) {
         var at = a.offsetTop - list.offsetTop;
         if (at < list.scrollTop + 8 || at + a.offsetHeight > list.scrollTop + list.clientHeight - 8) {
           list.scrollTop = Math.max(0, at - list.clientHeight / 3);
@@ -1964,6 +1959,12 @@
       },
       { passive: true }
     );
+    onPage(card, "toggle", function () {
+      if (card.open) {
+        current = -2;
+        spy();
+      }
+    });
     spy();
   }
 
@@ -3118,7 +3119,7 @@
     }
 
     function measure() {
-      // 文章页有大纲时（阅读模式）大纲自己吸住，其余卡片不跟随，照常滚走
+      // 文章页有大纲时，右栏整体吸顶，其余卡片在大纲下方独立滚动
       if (root.hasAttribute("data-reading")) {
         inner.classList.remove("is-following");
         inner.style.top = "";
