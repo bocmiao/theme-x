@@ -3,7 +3,7 @@
   <th:block th:fragment="rows(list, depth)">
     <th:block th:each="c : ${list}">
       <a class="x-explore-row" th:href="@{${c.status.permalink}}" th:style="${depth &gt; 0} ? 'padding-left: ' + ${16 + depth * 28} + 'px' : null">
-        <img
+        <img width="68" height="68"
           class="x-explore-thumb"
           th:if="${not #strings.isEmpty(c.spec.cover)}"
           th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"

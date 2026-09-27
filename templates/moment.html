@@ -41,7 +41,7 @@
 
         <article class="x-tweet x-tweet--detail">
           <div class="x-tweet-head">
-            <img class="x-avatar x-avatar--lg" th:src="${mavatar}" th:alt="${mname}" />
+            <img width="48" height="48" class="x-avatar x-avatar--lg" th:src="${mavatar}" th:alt="${mname}" />
             <span class="x-detail-identity">
               <span class="x-tweet-name">
                 <span th:text="${mname}"></span>
@@ -59,7 +59,7 @@
             th:attr="data-count=${#lists.size(photos) > 4 ? 4 : #lists.size(photos)}"
           >
             <!--/* 详情页全部铺出来：列表页只放前 4 张加「+N」角标，点进来要看得全 */-->
-            <img th:each="medium : ${photos}" th:src="${medium.url}" alt="" loading="lazy" data-lightbox />
+            <img width="600" height="600" th:each="medium : ${photos}" th:src="${medium.url}" alt="" loading="lazy" data-lightbox />
           </div>
 
           <div th:if="${others != null and not #lists.isEmpty(others)}" style="margin-top: 12px">
@@ -93,7 +93,7 @@
           </div>
 
           <div class="x-actions" style="max-width: none; border-bottom: 1px solid var(--border)">
-            <a class="x-action" data-kind="reply" href="#comments" th:if="${haloCommentEnabled}" th:title="#{action.reply}">
+            <a class="x-action" data-kind="reply" href="#comments" th:if="${haloCommentEnabled}" th:title="#{action.reply}" th:aria-label="#{action.reply}">
               <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
             </a>
             <button

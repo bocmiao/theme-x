@@ -16,7 +16,7 @@
             <div class="x-explore-row-title" th:text="${rp.spec.title}"></div>
             <div class="x-explore-row-sub" th:with="cnt=${rp.stats.visit ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></div>
           </div>
-          <img
+          <img width="68" height="68"
             class="x-explore-thumb"
             th:if="${not #strings.isEmpty(rp.spec.cover)}"
             th:src="${theme.config.features?.thumbnails != 'off'}

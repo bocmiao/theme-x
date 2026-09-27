@@ -69,7 +69,7 @@
             th:href="@{${mp.status.permalink}}"
             th:title="${mp.spec.title}"
           >
-            <img
+            <img width="600" height="600"
               th:src="${thumbs}
                 ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${mp.spec.cover},size='m')}
                 : ${mp.spec.cover}"

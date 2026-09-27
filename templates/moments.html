@@ -51,7 +51,7 @@
             th:attr="data-permalink=${url}, data-title=${#strings.abbreviate(#strings.isEmpty(content.raw) ? #messages.msg('common.moments') : #strings.trim(content.raw.replaceAll('&lt;[^&gt;]*&gt;', ' ')), 40)}"
           >
             <div class="x-tweet-side">
-              <img class="x-avatar" th:src="${mavatar}" th:alt="${mname}" loading="lazy" />
+              <img width="40" height="40" class="x-avatar" th:src="${mavatar}" th:alt="${mname}" loading="lazy" />
             </div>
 
             <div class="x-tweet-main">
@@ -81,7 +81,7 @@
                 th:attr="data-count=${#lists.size(photos) > 4 ? 4 : #lists.size(photos)}"
               >
                 <th:block th:each="medium, st : ${photos}">
-                  <img
+                  <img width="600" height="600"
                     th:if="${st.index &lt; 4}"
                     th:src="${medium.url}"
                     alt=""
@@ -121,7 +121,7 @@
               </div>
 
               <div class="x-actions">
-                <a class="x-action" data-kind="reply" th:href="${url} + '#comments'" th:title="#{action.reply}">
+                <a class="x-action" data-kind="reply" th:href="${url} + '#comments'" th:title="#{action.reply}" th:aria-label="#{action.reply}">
                   <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
                   <span class="x-action-count" data-format-count th:text="${moment.stats?.approvedComment ?: 0}"></span>
                 </a>

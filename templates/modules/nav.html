@@ -32,7 +32,7 @@
   >
     <div class="x-nav-inner">
       <a class="x-logo" th:href="@{/}" th:title="${site.title}" th:aria-label="#{common.home}">
-        <img th:if="${not #strings.isEmpty(nv?.logo)}" th:src="${nv.logo}" th:alt="${site.title}" />
+        <img width="30" height="30" th:if="${not #strings.isEmpty(nv?.logo)}" th:src="${nv.logo}" th:alt="${site.title}" />
         <svg th:unless="${not #strings.isEmpty(nv?.logo)}" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
@@ -123,7 +123,7 @@
 
       <!--/* 头像+昵称本来就该是「去我的主页」，之前绑的是显示设置，和上面的「更多」重复 */-->
       <a class="x-nav-account" th:href="@{${profileLink}}" th:title="#{common.profile}">
-        <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" />
+        <img width="40" height="40" class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" />
         <span class="x-nav-account-meta">
           <span class="x-nav-account-name" th:text="${xname}"></span>
           <span class="x-nav-account-handle" th:text="'@' + ${xhandle}"></span>

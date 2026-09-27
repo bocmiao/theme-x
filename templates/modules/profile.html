@@ -13,12 +13,12 @@
                stats=${stats ?: siteStatsFinder.getStats()}"
     >
       <div class="x-profile-banner">
-        <img th:if="${not #strings.isEmpty(banner)}" th:src="${banner}" alt="" data-lightbox />
+        <img width="1500" height="500" th:if="${not #strings.isEmpty(banner)}" th:src="${banner}" alt="" data-lightbox />
       </div>
 
       <div class="x-profile-body">
         <div class="x-profile-top">
-          <img class="x-profile-avatar" th:src="${avatar}" th:alt="${name}" />
+          <img width="133" height="133" class="x-profile-avatar" th:src="${avatar}" th:alt="${name}" />
           <div class="x-profile-actions">
             <button class="x-icon-button" type="button" data-open-display th:aria-label="#{common.displaySettings}" th:title="#{common.displaySettings}"
               style="border: 1px solid var(--border-strong); width: 36px; height: 36px">

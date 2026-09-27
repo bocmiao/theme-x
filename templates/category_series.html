@@ -46,7 +46,7 @@
             style="aspect-ratio: 2 / 1; max-height: 300px"
             th:if="${not #strings.isEmpty(category.spec.cover)}"
           >
-            <img th:src="${category.spec.cover}" th:alt="${category.spec.displayName}" data-lightbox data-alt-skip />
+            <img width="1500" height="500" th:src="${category.spec.cover}" th:alt="${category.spec.displayName}" data-lightbox data-alt-skip />
           </div>
 
           <div style="padding: 16px; text-align: center">
@@ -83,7 +83,7 @@
                     <span th:with="cnt=${sp.stats.visit ?: 0}" th:text="'· ' + ${cnt + #messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}"></span>
                   </span>
                 </span>
-                <img
+                <img width="68" height="68"
                   class="x-explore-thumb"
                   th:if="${not #strings.isEmpty(sp.spec.cover)}"
                   th:src="${thumbs}

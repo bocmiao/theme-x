@@ -37,7 +37,7 @@
             <span class="x-explore-cover" style="overflow: hidden; padding: 0">
               <span style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; height: 100%">
                 <th:block th:each="p, st : ${g.photos}">
-                  <img
+                  <img width="600" height="600"
                     th:if="${st.index &lt; 4}"
                     th:src="${#strings.isEmpty(p.spec.cover) ? p.spec.url : p.spec.cover}"
                     alt=""
@@ -67,7 +67,7 @@
           th:if="${not #lists.isEmpty(photos.items)}"
           th:with="thumbs=${theme.config.features?.thumbnails != 'off'}"
         >
-          <img
+          <img width="600" height="600"
             th:each="photo : ${photos.items}"
             th:with="raw=${#strings.isEmpty(photo.spec.cover) ? photo.spec.url : photo.spec.cover}"
             th:src="${thumbs} ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${raw},size='m')} : ${raw}"

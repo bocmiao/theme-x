@@ -1009,6 +1009,51 @@ spec:
             - label: 关闭
               value: "off"
 
+    # ================================================================ SEO
+    - group: seo
+      label: SEO 与分享
+      formSchema:
+        - $formkit: select
+          name: canonical
+          label: 由主题输出规范链接
+          value: "on"
+          help: SEO 工具集已开启「自动设置 Canonical」时选关闭，避免重复。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（由插件输出）
+              value: "off"
+        - $formkit: select
+          name: open_graph
+          label: 由主题输出 Open Graph
+          value: "on"
+          help: SEO 工具集已开启 OpenGraph 时选关闭，避免同名标签重复。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（由插件输出）
+              value: "off"
+        - $formkit: select
+          name: twitter_card
+          label: 由主题输出 X 卡片
+          value: "on"
+          help: SEO 工具集已开启 X（Twitter）卡片时选关闭，避免同名标签重复。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（由插件输出）
+              value: "off"
+        - $formkit: select
+          name: structured_data
+          label: 由主题输出文章和站点结构化数据
+          value: "on"
+          help: SEO 工具集已开启 Schema.org 结构化数据时选关闭，避免两套数据不一致。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭（由插件输出）
+              value: "off"
+
     # ================================================================ 高级
     - group: advanced
       label: 高级

@@ -12,6 +12,7 @@
     <!--/* 结构化数据：给搜索引擎看的文章信息 */-->
     <script
       type="application/ld+json"
+      th:if="${theme.config.seo?.structured_data != 'off'}"
       th:inline="javascript"
       th:with="base=${#strings.endsWith(site.url, '/')
                  ? #strings.substring(site.url, 0, #strings.length(site.url) - 1)
@@ -112,15 +113,15 @@
 
         <!--/* 封面当头图 */-->
         <div class="x-media" data-count="1" th:if="${not #strings.isEmpty(post.spec.cover)}" style="margin: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--border)">
-          <img th:src="${post.spec.cover}" th:alt="${post.spec.title}" data-lightbox data-alt-skip />
+          <img width="1200" height="675" th:src="${post.spec.cover}" th:alt="${post.spec.title}" data-lightbox data-alt-skip />
         </div>
 
         <article class="x-tweet x-tweet--detail" th:attr="data-post-name=${post.metadata.name}">
           <h2 class="x-detail-title" style="font-size: 1.866rem" th:text="${post.spec.title}"></h2>
 
           <div class="x-tweet-head" style="margin-bottom: 0">
-            <a th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true">
-              <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" />
+            <a th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true" th:aria-label="${xname}">
+              <img width="40" height="40" class="x-avatar" th:src="${xavatar}" th:alt="${xname}" />
             </a>
             <span class="x-detail-identity">
               <a class="x-tweet-name" th:href="@{${owner?.permalink ?: ('/about')}}">

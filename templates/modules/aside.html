@@ -173,7 +173,7 @@
           th:if="${not #strings.isEmpty(item.name) or not #strings.isEmpty(item.handle)}"
           th:with="itemLinkRaw=${#strings.trim(item.link ?: '')}, itemLink=${#strings.isEmpty(itemLinkRaw) ? '#' : (#strings.startsWith(itemLinkRaw, '/') or #strings.startsWith(itemLinkRaw, '#') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'http://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'https://') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'mailto:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'tel:') or #strings.startsWith(#strings.toLowerCase(itemLinkRaw), 'sms:') ? itemLinkRaw : 'https://' + itemLinkRaw)}"
         >
-          <img
+          <img width="40" height="40"
             class="x-avatar"
             th:src="${item.avatar ?: ('/themes/theme-x/assets/images/avatar.svg')}"
             alt=""

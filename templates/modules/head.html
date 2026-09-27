@@ -21,26 +21,31 @@
                  ? null
                  : (#strings.startsWith(image, 'http') ? image : (#strings.startsWith(image, '//') ? 'https:' + image : base + image))}"
     >
-      <link th:if="${canonicalUrl != null}" rel="canonical" th:href="${canonicalUrl}" />
+      <link th:if="${theme.config.seo?.canonical != 'off' and canonicalUrl != null}" rel="canonical" th:href="${canonicalUrl}" />
 
-      <!--/* 文章、独立页面的 description Halo 会自己注入（后台「元数据」里填的优先），首页配了 SEO 描述时同理，
-           主题再输出一条就重复了，而且排在前面会把站长填的盖掉 */-->
+      <!--/* Halo 注入首页、文章、独立页面、分类和标签的 description；主题只补其他页面。 */-->
       <meta
         name="description"
-        th:if="${not #strings.isEmpty(desc) and _templateId != 'post' and _templateId != 'page' and not (_templateId == 'index' and not #strings.isEmpty(site.seo?.description))}"
+        th:if="${not #strings.isEmpty(desc) and not (#strings.startsWith(_templateId ?: '', 'post') or #strings.startsWith(_templateId ?: '', 'page') or #strings.startsWith(_templateId ?: '', 'category') or _templateId == 'tag') and not (_templateId == 'index' and not #strings.isEmpty(site.seo?.description))}"
         th:content="${desc}"
       />
-      <meta property="og:type" th:content="${type ?: ('website')}" />
-      <meta property="og:url" th:if="${canonicalUrl != null}" th:content="${canonicalUrl}" />
-      <meta property="og:site_name" th:content="${site.title}" />
-      <meta property="og:locale" th:content="#{meta.ogLocale}" />
-      <meta property="og:title" th:content="${title ?: (site.title)}" />
-      <meta property="og:description" th:if="${not #strings.isEmpty(desc)}" th:content="${desc}" />
-      <meta property="og:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
-      <meta name="twitter:card" th:content="${imageUrl != null} ? 'summary_large_image' : 'summary'" />
-      <meta name="twitter:title" th:content="${title ?: (site.title)}" />
-      <meta name="twitter:description" th:if="${not #strings.isEmpty(desc)}" th:content="${desc}" />
-      <meta name="twitter:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
+      <th:block th:with="socialDesc=${#strings.isEmpty(desc) ? (#strings.isEmpty(site.seo?.description) ? site.subtitle : site.seo.description) : desc}">
+        <th:block th:if="${theme.config.seo?.open_graph != 'off'}">
+          <meta property="og:type" th:content="${type ?: ('website')}" />
+          <meta property="og:url" th:if="${canonicalUrl != null}" th:content="${canonicalUrl}" />
+          <meta property="og:site_name" th:content="${site.title}" />
+          <meta property="og:locale" th:content="#{meta.ogLocale}" />
+          <meta property="og:title" th:content="${title ?: (site.title)}" />
+          <meta property="og:description" th:if="${not #strings.isEmpty(socialDesc)}" th:content="${socialDesc}" />
+          <meta property="og:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
+        </th:block>
+        <th:block th:if="${theme.config.seo?.twitter_card != 'off'}">
+          <meta name="twitter:card" th:content="${imageUrl != null} ? 'summary_large_image' : 'summary'" />
+          <meta name="twitter:title" th:content="${title ?: (site.title)}" />
+          <meta name="twitter:description" th:if="${not #strings.isEmpty(socialDesc)}" th:content="${socialDesc}" />
+          <meta name="twitter:image" th:if="${imageUrl != null}" th:content="${imageUrl}" />
+        </th:block>
+      </th:block>
     </th:block>
 
     <link th:if="${#strings.isEmpty(site.favicon)}" rel="icon" type="image/svg+xml" th:href="@{/themes/theme-x/assets/images/logo.svg(v=${theme.spec.version})}" />

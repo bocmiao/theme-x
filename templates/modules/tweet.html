@@ -126,7 +126,7 @@
     >
       <!--/* 列表里加载的是缩略图，data-fallback 兜住接口取不到的情况；
            点开灯箱时用 data-full 的原图 */-->
-      <img
+      <img width="1200" height="675"
         th:src="${thumbs}
           ? @{/apis/api.storage.halo.run/v1alpha1/thumbnails/-/via-uri(uri=${cover},size='l')}
           : ${cover}"
@@ -170,8 +170,8 @@
                  data-time=${post.spec.publishTime}"
       >
         <div class="x-tweet-side">
-          <a class="x-avatar-link" th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true">
-            <img class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" decoding="async" />
+          <a class="x-avatar-link" th:href="@{${owner?.permalink ?: ('/about')}}" tabindex="-1" aria-hidden="true" th:aria-label="${xname}">
+            <img width="40" height="40" class="x-avatar" th:src="${xavatar}" th:alt="${xname}" loading="lazy" decoding="async" />
           </a>
         </div>
 
@@ -239,7 +239,7 @@
         <small th:if="${count != null and count > 0}" th:with="cnt=${count ?: 0}" th:text="${cnt + #messages.msg(cnt == 1 ? 'unit.reply' : 'unit.replies')}"></small>
       </h2>
       <div class="x-reply-prompt">
-        <img class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
+        <img width="40" height="40" class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
         <span class="x-reply-prompt-text">
           [[#{action.reply}]] <b th:text="'@' + ${xhandle}"></b>
         </span>

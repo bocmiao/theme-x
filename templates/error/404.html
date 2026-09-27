@@ -68,7 +68,7 @@
                 <div class="x-explore-row-sub" th:text="${#temporals.format(post.spec.publishTime, #messages.msg('format.date'))}"></div>
                 <div class="x-explore-row-title" th:text="${post.spec.title}"></div>
               </div>
-              <img
+              <img width="68" height="68"
                 class="x-explore-thumb"
                 th:if="${not #strings.isEmpty(post.spec.cover)}"
                 th:src="${theme.config.features?.thumbnails != 'off'}

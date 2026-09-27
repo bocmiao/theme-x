@@ -1050,7 +1050,7 @@
           "</a></h2>" +
           (b.excerpt ? '<p class="x-tweet-text">' + escapeHtml(b.excerpt) + "</p>" : "") +
           (b.cover
-            ? '<div class="x-media" data-count="1"><img src="' +
+            ? '<div class="x-media" data-count="1"><img width="1200" height="675" src="' +
               escapeHtml(b.cover) +
               '" alt="" loading="lazy" data-lightbox></div>'
             : "") +
@@ -2192,7 +2192,7 @@
     }
     function img(src, fallback) {
       return (
-        '<img class="x-avatar" src="' +
+        '<img class="x-avatar" width="40" height="40" src="' +
         escapeHtml(src || fallback) +
         '" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' +
         fallback +
@@ -2226,7 +2226,7 @@
       var open = ' target="_blank" rel="noopener noreferrer"';
       return (
         '<article class="x-tweet x-tweet--friend" data-friend-url="' + escapeHtml(url) + '">' +
-        '<div class="x-tweet-side"><a class="x-avatar-link" href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true">' +
+        '<div class="x-tweet-side"><a class="x-avatar-link" href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true" aria-label="' + escapeHtml(name) + '">' +
         img(safeUrl(it.authorLogo), AVATAR) +
         "</a></div>" +
         '<div class="x-tweet-main"><div class="x-tweet-head">' +
@@ -2257,7 +2257,7 @@
       var open = ' target="_blank" rel="noopener noreferrer"';
       return (
         '<div class="x-follow-row">' +
-        '<a href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true">' +
+        '<a href="' + escapeHtml(url) + '"' + open + ' tabindex="-1" aria-hidden="true" aria-label="' + escapeHtml(spec.displayName || host(url)) + '">' +
         img(safeUrl(spec.logo), AVATAR) +
         "</a>" +
         '<div class="x-follow-meta">' +
@@ -3582,6 +3582,8 @@
 
   function epicImg(g, cls, w, h) {
     var img = node("img", cls);
+    img.width = w;
+    img.height = h;
     img.alt = "";
     img.loading = "lazy";
     img.decoding = "async";
@@ -4148,6 +4150,8 @@
     if (src) {
       var media = node("span", "x-linkcard-media" + (m.image ? "" : " is-icon"));
       var img = node("img");
+      img.width = m.image ? 1200 : 32;
+      img.height = m.image ? 628 : 32;
       img.alt = "";
       img.loading = "lazy";
       img.decoding = "async";

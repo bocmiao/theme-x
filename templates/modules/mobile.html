@@ -10,10 +10,10 @@
                xavatar=${pf?.avatar ?: (site.logo ?: ('/themes/theme-x/assets/images/avatar.svg'))}"
     >
       <button type="button" data-open-drawer th:aria-label="#{a11y.openMenu}">
-        <img class="x-avatar x-avatar--sm" th:src="${xavatar}" alt="" loading="lazy" />
+        <img width="32" height="32" class="x-avatar x-avatar--sm" th:src="${xavatar}" alt="" loading="lazy" />
       </button>
       <a class="x-logo" th:href="@{/}" th:aria-label="#{common.home}">
-        <img th:if="${not #strings.isEmpty(theme.config.nav?.logo)}" th:src="${theme.config.nav.logo}" alt="" />
+        <img width="30" height="30" th:if="${not #strings.isEmpty(theme.config.nav?.logo)}" th:src="${theme.config.nav.logo}" alt="" />
         <svg th:unless="${not #strings.isEmpty(theme.config.nav?.logo)}" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
@@ -97,8 +97,8 @@
       <div class="x-drawer-scrim" data-close-drawer></div>
       <div class="x-drawer-panel" role="dialog" aria-modal="true" th:aria-label="#{common.menu}">
         <div class="x-drawer-head">
-          <a th:href="@{${profileLink}}" tabindex="-1" aria-hidden="true">
-            <img class="x-avatar x-avatar--xl" th:src="${xavatar}" th:alt="${xname}" />
+          <a th:href="@{${profileLink}}" tabindex="-1" aria-hidden="true" th:aria-label="${xname}">
+            <img width="56" height="56" class="x-avatar x-avatar--xl" th:src="${xavatar}" th:alt="${xname}" />
           </a>
           <div class="x-drawer-name">
             <span th:text="${xname}"></span>

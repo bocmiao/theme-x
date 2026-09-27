@@ -7,6 +7,7 @@
     <!--/* 结构化数据：站点本身 */-->
     <script
       type="application/ld+json"
+      th:if="${theme.config.seo?.structured_data != 'off'}"
       th:inline="javascript"
       th:with="ldName=${#strings.replace(site.title ?: '', '&lt;', '')},
                ldDesc=${#strings.replace(site.subtitle ?: '', '&lt;', '')}"
@@ -68,7 +69,7 @@
 
         <!--/* 发帖框：点一下直接去后台编辑器 */-->
         <div class="x-compose" th:if="${hm?.compose != 'off'}">
-          <img class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
+          <img width="40" height="40" class="x-avatar" th:src="${xavatar}" alt="" loading="lazy" />
           <div class="x-compose-main">
             <a
               class="x-compose-field"

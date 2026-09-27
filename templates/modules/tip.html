@@ -112,15 +112,15 @@
 
             <div class="x-tip-panes" th:if="${qrCount > 0}">
               <div class="x-tip-pane" role="tabpanel" data-tip-pane="wechat" th:if="${not #strings.isEmpty(tp?.wechat)}">
-                <img th:src="${tp.wechat}" th:alt="${#messages.msg('tip.wechat') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <img width="300" height="300" th:src="${tp.wechat}" th:alt="${#messages.msg('tip.wechat') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
                 <span th:text="#{tip.wechat}">微信</span>
               </div>
               <div class="x-tip-pane" role="tabpanel" data-tip-pane="alipay" th:if="${not #strings.isEmpty(tp?.alipay)}">
-                <img th:src="${tp.alipay}" th:alt="${#messages.msg('tip.alipay') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <img width="300" height="300" th:src="${tp.alipay}" th:alt="${#messages.msg('tip.alipay') + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
                 <span th:text="#{tip.alipay}">支付宝</span>
               </div>
               <div class="x-tip-pane" role="tabpanel" data-tip-pane="custom" th:if="${not #strings.isEmpty(tp?.custom_qr)}">
-                <img th:src="${tp.custom_qr}" th:alt="${customLabel + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
+                <img width="300" height="300" th:src="${tp.custom_qr}" th:alt="${customLabel + ' ' + #messages.msg('tip.scan')}" loading="lazy" />
                 <span th:text="${customLabel}">其他</span>
               </div>
             </div>
