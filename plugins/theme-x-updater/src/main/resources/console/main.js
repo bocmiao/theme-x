@@ -1,6 +1,6 @@
 /* theme-x 助手 · 后台部分
    不经过构建：直接用 Halo 后台挂在 window 上的 Vue / HaloComponents / HaloApiClient。
-   1. 主题列表里 theme-x 那一行：有新版本时多一个「更新到 x.y.z」按钮；
+   1. 主题列表里 theme-x 那一行：常驻「检测更新」按钮，有新版本时变成「更新到 x.y.z」；
       插件列表里 theme-x 助手那一行同理（插件的新版就在主题包里带着，见 upgradePluginNow）
    2. 仪表盘部件「theme-x 更新」（仪表盘「设置 → 添加部件 → 小部件中心 → 其他」里加）
    3. 进后台时有新版本就弹一条提示（每个版本每次打开浏览器只提示一次）
@@ -21,7 +21,7 @@
   var h = Vue.h;
 
   var PLUGIN = "theme-x-updater";
-  var VERSION = "2.2.1"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
+  var VERSION = "2.2.2"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];
@@ -82,7 +82,7 @@
 
   // 同一时间只发一个请求；force = 用户点了「重新检查」
   function check(force) {
-    if (pending && !force) return pending;
+    if (pending) return pending;
     state.loading = true;
     pending = fetch(LATEST + (force ? "?refresh=true" : ""), {
       credentials: "same-origin",
@@ -106,8 +106,9 @@
       .catch(function (e) {
         state.error = e.message || String(e);
       })
-      .then(function () {
+      .finally(function () {
         state.loading = false;
+        pending = null;
       });
     return pending;
   }
@@ -322,20 +323,33 @@
         check(false);
       });
       return function () {
-        if (!hasUpdate(installed.value)) return null;
-        return h("span", { style: "display:inline-flex" }, [
+        var updateAvailable = hasUpdate(installed.value);
+        return h("span", {
+          style: "display:inline-flex",
+          onClick: function (e) { e.stopPropagation(); }
+        }, [
           h(
             C.VButton,
             {
               size: "sm",
               type: "secondary",
-              title: "GitHub 上有新版本 " + state.info.version,
+              loading: state.loading,
+              disabled: state.loading,
+              title: updateAvailable ? "GitHub 上有新版本 " + state.info.version : "重新检查 theme-x 是否有新版本",
               onClick: function () {
-                open.value = true;
+                if (updateAvailable) {
+                  open.value = true;
+                  return;
+                }
+                check(true).then(function () {
+                  if (state.error) C.Toast.error("检测更新失败：" + state.error, { duration: 8000 });
+                  else if (hasUpdate(installed.value)) C.Toast.success("发现新版本 " + state.info.version);
+                  else C.Toast.success("已是最新版本");
+                });
               }
             },
             function () {
-              return "更新到 " + state.info.version;
+              return state.loading ? "检测中…" : updateAvailable ? "更新到 " + state.info.version : "检测更新";
             }
           ),
           open.value

@@ -16,6 +16,6 @@ spec:
   license:
     - name: GPL-3.0
       url: https://www.gnu.org/licenses/gpl-3.0.html
-  version: 2.2.1
+  version: 2.2.2
   settingName: theme-x-updater-settings
   configMapName: theme-x-updater-configmap
