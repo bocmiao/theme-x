@@ -42,7 +42,8 @@
              myName=${#strings.isEmpty(lk?.my_name) ? site.title : lk.my_name},
              myUrl=${#strings.isEmpty(lk?.my_url) ? site.url : lk.my_url},
              myLogo=${#strings.isEmpty(lk?.my_logo) ? (theme.config.profile?.avatar ?: site.logo) : lk.my_logo},
-             myDesc=${#strings.isEmpty(lk?.my_desc) ? site.subtitle : lk.my_desc}"
+             myDesc=${#strings.isEmpty(lk?.my_desc) ? site.subtitle : lk.my_desc},
+             noApply=${theme.config.features?.comments == 'off'}"
   >
     <section
       class="x-apply"
@@ -53,7 +54,7 @@
       <h2 class="x-apply-head" th:text="#{links.applyTitle}">申请友链</h2>
 
       <div class="x-apply-body">
-        <p class="x-apply-lead" th:text="#{links.applyLead}">想交换友链的话，先把我加上，再把你的信息填在下面。</p>
+        <p class="x-apply-lead" th:text="${noApply} ? #{links.applyLeadStatic} : #{links.applyLead}">想交换友链的话，先把我加上，再把你的信息填在下面。</p>
 
         <dl class="x-apply-mine">
           <div>
@@ -83,12 +84,13 @@
           >
             复制我的信息
           </button>
-          <button class="x-btn x-btn--accent" type="button" data-apply-open th:text="#{links.applyOpen}">填写申请</button>
+          <button class="x-btn x-btn--accent" type="button" data-apply-open th:unless="${noApply}" th:text="#{links.applyOpen}">填写申请</button>
         </div>
 
-        <p class="x-apply-note" th:text="${#strings.isEmpty(lk?.apply_note) ? #messages.msg('links.applyNote') : lk.apply_note}"></p>
+        <p class="x-apply-note" th:unless="${noApply and #strings.isEmpty(lk?.apply_note)}" th:text="${#strings.isEmpty(lk?.apply_note) ? #messages.msg('links.applyNote') : lk.apply_note}"></p>
 
-        <form class="x-apply-form" data-apply-form hidden>
+        <!--/* 「功能 → 评论区」关闭（非交互式网站）时不出表单：访客不能往站里提交任何东西 */-->
+        <form class="x-apply-form" data-apply-form hidden th:unless="${noApply}">
           <label class="x-field">
             <span th:text="#{links.name}">名称</span>
             <input name="displayName" type="text" required maxlength="60" autocomplete="off" />

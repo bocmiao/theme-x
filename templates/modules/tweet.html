@@ -16,10 +16,12 @@
   <!--/* ================================================== 互动栏 ========= */-->
   <th:block th:fragment="actions(post, canComment)">
     <div class="x-actions" th:if="${theme.config.post?.actions != 'off'}">
-      <!--/* 评论关掉时页面上没有 #comments，锚点跳过去什么也不会发生，退化成「打开这篇」 */-->
+      <!--/* 这一篇不让评论时页面上没有 #comments，锚点跳过去什么也不会发生，退化成「打开这篇」；
+           「功能 → 评论区」整站关闭时连按钮带回复数一起不出 */-->
       <a
         class="x-action"
         data-kind="reply"
+        th:if="${theme.config.features?.comments != 'off'}"
         th:href="${canComment == false} ? @{${post.status.permalink}} : @{${post.status.permalink}} + '#comments'"
         th:title="#{action.reply}"
         th:aria-label="#{action.reply}"
@@ -216,7 +218,7 @@
           </div>
 
           <th:block th:replace="~{modules/tweet :: media(post=${post})}"></th:block>
-          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')})}"></th:block>
         </div>
       </article>
     </div>

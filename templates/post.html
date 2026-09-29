@@ -188,7 +188,7 @@
           </div>
 
 
-          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+          <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')})}"></th:block>
         </article>
 
         <th:block th:replace="~{modules/downloads :: downloads(post=${post})}"></th:block>
@@ -220,7 +220,7 @@
         <th:block th:replace="~{modules/related :: related(post=${post}, count=${relatedLimit})}"></th:block>
 
         <!--/* 回复 */-->
-        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">
+        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')}">
           <th:block th:replace="~{modules/tweet :: commentsHead(count=${post.stats.comment})}"></th:block>
           <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="Post" th:attr="name=${post.metadata.name}" /></div>
         </section>

@@ -146,7 +146,7 @@
           <div class="x-detail-stats" style="border-top: 1px solid var(--border); margin-top: 16px">
             <span th:with="cnt=${post.stats.visit ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}]]</span>
             <span th:with="cnt=${post.stats.upvote ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'unit.like' : 'unit.likes')}]]</span>
-            <span th:with="cnt=${post.stats.comment ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'unit.reply' : 'unit.replies')}]]</span>
+            <span th:if="${theme.config.features?.comments != 'off'}" th:with="cnt=${post.stats.comment ?: 0}"><strong data-format-count="keep" th:text="${cnt}"></strong>[[${#messages.msg(cnt == 1 ? 'unit.reply' : 'unit.replies')}]]</span>
           </div>
         </article>
 
@@ -187,7 +187,7 @@
 
         <div style="border-top: 1px solid var(--border)">
           <div style="padding: 0 16px">
-            <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and haloCommentEnabled})}"></th:block>
+            <th:block th:replace="~{modules/tweet :: actions(post=${post}, canComment=${post.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')})}"></th:block>
           </div>
         </div>
 
@@ -218,7 +218,7 @@
 
         <th:block th:replace="~{modules/related :: related(post=${post}, count=${relatedLimit})}"></th:block>
 
-        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and haloCommentEnabled}">
+        <section class="x-comments" id="comments" th:if="${post.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')}">
           <th:block th:replace="~{modules/tweet :: commentsHead(count=${post.stats.comment})}"></th:block>
           <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="Post" th:attr="name=${post.metadata.name}" /></div>
         </section>

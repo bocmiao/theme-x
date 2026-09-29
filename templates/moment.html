@@ -93,7 +93,7 @@
           </div>
 
           <div class="x-actions" style="max-width: none; border-bottom: 1px solid var(--border)">
-            <a class="x-action" data-kind="reply" href="#comments" th:if="${haloCommentEnabled}" th:title="#{action.reply}" th:aria-label="#{action.reply}">
+            <a class="x-action" data-kind="reply" href="#comments" th:if="${(haloCommentEnabled and theme.config.features?.comments != 'off')}" th:title="#{action.reply}" th:aria-label="#{action.reply}">
               <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
             </a>
             <button
@@ -113,7 +113,7 @@
           </div>
         </article>
 
-        <section class="x-comments" id="comments" th:if="${haloCommentEnabled}">
+        <section class="x-comments" id="comments" th:if="${(haloCommentEnabled and theme.config.features?.comments != 'off')}">
           <th:block th:replace="~{modules/tweet :: commentsHead(count=${moment.stats?.approvedComment})}"></th:block>
           <div class="x-comments-widget"><halo:comment group="moment.halo.run" kind="Moment" th:attr="name=${moment.metadata.name}" /></div>
         </section>

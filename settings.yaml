@@ -636,7 +636,7 @@ spec:
         - $formkit: text
           name: icp
           label: ICP 备案号
-          help: 例如 豫ICP备20014910号-5。填了就会出现在页脚并链到工信部备案系统；留空则不显示。在中国大陆境内提供服务的网站这是必须的
+          help: 例如 豫ICP备20014910号-7。填了就会出现在页脚并链到工信部备案系统；留空则不显示。在中国大陆境内提供服务的网站这是必须的
         - $formkit: text
           name: copyright
           label: 页脚版权
@@ -831,6 +831,16 @@ spec:
     - group: features
       label: 功能
       formSchema:
+        - $formkit: select
+          name: comments
+          label: 评论区
+          value: "on"
+          help: 选「关闭」后全站不显示评论区、回复按钮和回复数，友链页只留「我的信息」和复制按钮、不再有申请表单。公安备案登记为「非交互式」网站时用它。主题只管页面上不显示，接口要另外关：Halo「系统 → 设置 → 评论设置」关掉「启用评论」，链接插件「设置 → 友链申请」关掉「启用友链申请」
+          options:
+            - label: 显示（跟着 Halo 的评论设置）
+              value: "on"
+            - label: 关闭（非交互式网站）
+              value: "off"
         - $formkit: select
           name: infinite
           label: 无限滚动

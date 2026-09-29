@@ -121,7 +121,7 @@
               </div>
 
               <div class="x-actions">
-                <a class="x-action" data-kind="reply" th:href="${url} + '#comments'" th:title="#{action.reply}" th:aria-label="#{action.reply}">
+                <a class="x-action" data-kind="reply" th:if="${(haloCommentEnabled and theme.config.features?.comments != 'off')}" th:href="${url} + '#comments'" th:title="#{action.reply}" th:aria-label="#{action.reply}">
                   <span class="x-action-icon"><iconify-icon icon="ri:chat-1-line"></iconify-icon></span>
                   <span class="x-action-count" data-format-count th:text="${moment.stats?.approvedComment ?: 0}"></span>
                 </a>

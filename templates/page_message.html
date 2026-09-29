@@ -39,7 +39,7 @@
           </div>
         </div>
 
-        <section class="x-comments" id="comments" th:if="${singlePage.spec.allowComment and haloCommentEnabled}">
+        <section class="x-comments" id="comments" th:if="${singlePage.spec.allowComment and (haloCommentEnabled and theme.config.features?.comments != 'off')}">
           <th:block th:replace="~{modules/tweet :: commentsHead(count=${singlePage.stats.comment})}"></th:block>
           <div class="x-comments-widget"><halo:comment group="content.halo.run" kind="SinglePage" th:attr="name=${singlePage.metadata.name}" /></div>
         </section>
