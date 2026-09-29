@@ -1000,6 +1000,7 @@ button.x-card-more[hidden] { display: none; }
 .x-apply-acts { display: flex; flex-wrap: wrap; gap: 10px; }
 .x-apply-note { margin: 14px 0 0; color: var(--text-secondary); font-size: 0.866rem; line-height: 1.7; white-space: pre-wrap; }
 .x-apply-form { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+.x-hp { position: absolute !important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .x-field { display: flex; flex-direction: column; gap: 4px; }
 .x-field label { color: var(--text-secondary); font-size: 0.866rem; }
 .x-field input {

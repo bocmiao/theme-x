@@ -1,0 +1,60 @@
+apiVersion: notification.halo.run/v1alpha1
+kind: ReasonType
+metadata:
+  name: comment-moderation-pending
+  annotations:
+    rbac.authorization.halo.run/ui-permissions: |
+      [ "system:comments:manage" ]
+spec:
+  displayName: "有评论等待审核"
+  description: "评论审核（theme-x 助手）把可疑的评论留在待审时，按插件设置里的提醒方式通知你。"
+  properties:
+    - name: headline
+      type: string
+      description: "一句话说明，比如「有 3 条评论等你审核」"
+    - name: count
+      type: string
+      description: "待审条数"
+    - name: reviewUrl
+      type: string
+      description: "后台「评论审核」页的地址"
+    - name: itemsText
+      type: string
+      optional: true
+      description: "待审评论的纯文本列表"
+    - name: items
+      type: array
+      optional: true
+      description: "待审评论（who / where / text / why）"
+---
+apiVersion: notification.halo.run/v1alpha1
+kind: NotificationTemplate
+metadata:
+  name: template-comment-moderation-pending
+spec:
+  reasonSelector:
+    reasonType: comment-moderation-pending
+    language: default
+  template:
+    title: "[(${headline})]"
+    rawBody: |
+      [(${subscriber.displayName})] 你好：
+
+      [(${headline})]
+
+      [(${itemsText})]
+      去处理：[(${reviewUrl})]
+    htmlBody: |
+      <div class="notification-content">
+        <p th:text="|${subscriber.displayName} 你好：|"></p>
+        <p style="font-size:15px;font-weight:600" th:text="${headline}"></p>
+        <ul style="padding-left:18px">
+          <li th:each="it : ${items}" style="margin-bottom:10px;line-height:1.6">
+            <b th:text="${it['who']}"></b>
+            <span style="color:#6b7280" th:text="|（${it['where']}）|"></span><br />
+            <span th:text="${it['text']}"></span><br />
+            <small style="color:#b45309" th:text="|理由：${it['why']}|"></small>
+          </li>
+        </ul>
+        <p><a th:href="${reviewUrl}" target="_blank">打开「评论审核」处理</a></p>
+      </div>

@@ -9,6 +9,7 @@
    5. 菜单「内容 → 友链体检」：看后端定时检查友链的报告
    6. 上传自动转 WebP：上传前在浏览器里把 PNG / JPEG 转成 WebP（2.0.0 起从单独的插件并进来）
    7. 菜单「内容 → 写作助手」：新文章别名按日期编号（20260927-001）、AI 写摘要（2.2.0 起）
+   8. 菜单「内容 → 评论审核」：待审 / 垃圾评论的处理、友链申请的检查结果、试一下、加规则、全量复查（2.3.0 起，审核本身在后端）
 
    排查 WebP 用：控制台里看 `window.__webpUpload.seen`，每次上传都会记一条（地址、是否命中、转换结果）。 */
 (function () {
@@ -21,7 +22,7 @@
   var h = Vue.h;
 
   var PLUGIN = "theme-x-updater";
-  var VERSION = "2.2.3"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
+  var VERSION = "2.3.0"; // 读不到插件信息时的兜底，和 plugin.yaml 保持一致
   var THEME = "theme-x";
   var LATEST = "/apis/console.api.themexupdater.halo.run/v1alpha1/themes/" + THEME + "/latest";
   var PERM = ["system:themes:manage"];
@@ -1643,6 +1644,662 @@
     }
   });
 
+  /* ---------------------------------------------------------------- 评论审核页面
+     状态、待审 / 垃圾 / 已通过的列表和处理、试一下、加规则、全量复查。审核本身在后端（新评论进来时自动审）。 */
+  var MOD = "/apis/console.api.themexupdater.halo.run/v1alpha1/moderation";
+  var MOD_TABS = [
+    { key: "pending", label: "待审" },
+    { key: "spam", label: "垃圾" },
+    { key: "pass", label: "自动通过" },
+    { key: "manual-pass", label: "人工通过" },
+    { key: "missed", label: "漏网（撤回过的）" }
+  ];
+  var MOD_SOURCE = { site: "网站体检", local: "本地规则", tencent: "腾讯云", aliyun: "阿里云", llm: "大模型", cloud: "云厂商", halo: "Halo" };
+  var MOD_LEVEL = {
+    spam: { text: "垃圾", bg: "#fef2f2", fg: "#b91c1c" },
+    suspect: { text: "可疑", bg: "#fffbeb", fg: "#b45309" },
+    error: { text: "出错", bg: "#f3f4f6", fg: "#4b5563" },
+    pass: { text: "通过", bg: "#f0fdf4", fg: "#15803d" }
+  };
+  var MOD_DECISION = { approve: ["自动公开", "#15803d"], hold: ["留待审", "#b45309"], spam: ["判为垃圾", "#b91c1c"] };
+  var MOD_MODE = { instant: "有待审评论就提醒", threshold: "待审攒够条数再提醒", daily: "每天定时汇总", off: "不提醒" };
+
+  function fmtTime(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var p = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  var CommentReviewPage = Vue.defineComponent({
+    name: "ThemeXCommentReview",
+    setup: function () {
+      var st = Vue.ref(null);
+      var tab = Vue.ref("pending");
+      var items = Vue.ref([]);
+      var listLoading = Vue.ref(false);
+      var busy = Vue.ref("");
+      var picked = Vue.reactive({});
+      var suggest = Vue.ref(null);
+      var test = Vue.reactive({ text: "", author: "", website: "", result: null });
+      var ruleText = Vue.ref("");
+      var rescanDays = Vue.ref("30");
+      var rescanExternal = Vue.ref(false);
+      var links = Vue.ref(null);
+      var timer = null;
+
+      function loadStatus() {
+        return ax()
+          .get(MOD)
+          .then(function (r) {
+            st.value = r.data;
+            var running = r.data && r.data.rescan && r.data.rescan.running;
+            if (running && !timer) {
+              timer = setInterval(loadStatus, 2000);
+            } else if (!running && timer) {
+              clearInterval(timer);
+              timer = null;
+              loadList();
+            }
+          })
+          ["catch"](function (e) {
+            C.Toast.error("读不到评论审核的状态：" + errorText(e));
+          });
+      }
+      function loadList() {
+        listLoading.value = true;
+        Object.keys(picked).forEach(function (k) {
+          delete picked[k];
+        });
+        return ax()
+          .get(MOD + "/items", { params: { state: tab.value, limit: 100 } })
+          .then(function (r) {
+            items.value = (r.data && r.data.items) || [];
+          })
+          ["catch"](function (e) {
+            C.Toast.error("读不到列表：" + errorText(e));
+          })
+          .then(function () {
+            listLoading.value = false;
+          });
+      }
+      function reload() {
+        return Promise.all([loadStatus(), loadList(), loadLinks()]);
+      }
+      Vue.onMounted(reload);
+      Vue.onBeforeUnmount(function () {
+        if (timer) clearInterval(timer);
+      });
+
+      function run(key, fn) {
+        busy.value = key;
+        return Promise.resolve()
+          .then(fn)
+          ["catch"](function (e) {
+            C.Toast.error(errorText(e));
+          })
+          .then(function () {
+            busy.value = "";
+          });
+      }
+
+      function act(action, list) {
+        if (!list.length) return;
+        var go = function () {
+          return run("act", function () {
+            return ax()
+              .post(MOD + "/-/act", {
+                action: action,
+                items: list.map(function (it) {
+                  return { kind: it.kind, name: it.name };
+                })
+              })
+              .then(function (r) {
+                var d = r.data || {};
+                var failed = (d.results || []).filter(function (x) {
+                  return x.error;
+                });
+                if (failed.length) C.Toast.warning(failed.length + " 条没处理成：" + failed[0].error);
+                var names = { approve: "已通过", spam: "已标成垃圾", delete: "已删除", withdraw: "已撤回" };
+                if (d.ok) C.Toast.success(names[action] + " " + d.ok + " 条");
+                if (action === "withdraw") {
+                  var s = { emails: [], ips: [], domains: [] };
+                  (d.results || []).forEach(function (x) {
+                    if (!x.suggest) return;
+                    if (x.suggest.email) s.emails.push(x.suggest.email);
+                    if (x.suggest.ip) s.ips.push(x.suggest.ip);
+                    (x.suggest.domains || []).forEach(function (dm) {
+                      s.domains.push(dm);
+                    });
+                  });
+                  s.emails = uniq(s.emails);
+                  s.ips = uniq(s.ips);
+                  s.domains = uniq(s.domains);
+                  suggest.value = s.emails.length || s.ips.length || s.domains.length ? s : null;
+                }
+                return reload();
+              });
+          });
+        };
+        if (action === "delete") {
+          C.Dialog.warning({
+            title: "删除这 " + list.length + " 条？",
+            description: "删了就找不回来了；评论下面的回复会一起删掉。",
+            confirmText: "删除",
+            cancelText: "取消",
+            onConfirm: go
+          });
+        } else {
+          go();
+        }
+      }
+
+      function addRule(type, values, label) {
+        values = uniq(values);
+        if (!values.length) return;
+        return run("rule", function () {
+          return ax()
+            .post(MOD + "/-/rule", { type: type, values: values })
+            .then(function (r) {
+              var n = (r.data && r.data.added) || 0;
+              C.Toast.success(n ? "已加进" + label + "：" + values.join("、") : "都已经在" + label + "里了");
+            });
+        });
+      }
+
+      function runTest() {
+        test.result = null;
+        return run("test", function () {
+          return ax()
+            .post(MOD + "/-/test", { text: test.text, author: test.author, website: test.website })
+            .then(function (r) {
+              test.result = r.data;
+            });
+        });
+      }
+
+      function testEmail() {
+        return run("email", function () {
+          return ax()
+            .post(MOD + "/-/test-email")
+            .then(function () {
+              C.Toast.success("测试邮件已经交给 Halo 发送，过一两分钟看看收件箱（也看看垃圾箱）");
+            });
+        });
+      }
+
+      function haloReview() {
+        return run("halo", function () {
+          return ax()
+            .post(MOD + "/-/halo-review")
+            .then(function () {
+              C.Toast.success("已打开 Halo 的「新评论审核」");
+              return loadStatus();
+            });
+        });
+      }
+
+      function rescan() {
+        var days = parseInt(rescanDays.value, 10) || 0;
+        C.Dialog.warning({
+          title: "全量复查已经公开的评论？",
+          description:
+            "用现在的规则把" +
+            (days ? "最近 " + days + " 天" : "全部") +
+            "公开的评论和回复重新审一遍，不该公开的撤回到待审或垃圾。人工通过的、管理员发的不动。" +
+            (rescanExternal.value ? "勾了连同云厂商 / 大模型：每条都会调一次接口（按量计费，受每日上限约束）。" : "只用本地规则，不花钱。"),
+          confirmText: "开始复查",
+          cancelText: "取消",
+          onConfirm: function () {
+            return run("rescan", function () {
+              return ax()
+                .post(MOD + "/-/rescan", { external: rescanExternal.value, days: days })
+                .then(function (r) {
+                  if (r.data && r.data.started) C.Toast.success("开始复查了，这页会显示进度");
+                  else C.Toast.warning("上一次复查还没跑完");
+                  return loadStatus();
+                });
+            });
+          }
+        });
+      }
+
+      /* ---------- 小部件 */
+      function card(title, children, extra) {
+        return h("div", { style: "background:#fff;border-radius:8px;outline:1px solid #eaecf0;overflow:hidden;margin-bottom:16px" }, [
+          h("div", { style: "display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #eaecf0;font-weight:600;font-size:14px" }, [
+            h("span", { style: "flex:1" }, title),
+            extra || null
+          ]),
+          h("div", { style: "padding:12px 16px;font-size:13px;line-height:1.8;color:#374151" }, children)
+        ]);
+      }
+      function line(label, value, color) {
+        return h("div", { style: "display:flex;gap:12px" }, [
+          h("span", { style: "flex:0 0 120px;color:#6b7280" }, label),
+          h("span", { style: "flex:1;min-width:0;word-break:break-all;color:" + (color || "#111827") }, value)
+        ]);
+      }
+      function btn(text, onClick, opts) {
+        opts = opts || {};
+        return h(
+          C.VButton,
+          Object.assign({ size: "sm", loading: busy.value === opts.key, disabled: !!busy.value, onClick: onClick }, opts.props),
+          function () {
+            return text;
+          }
+        );
+      }
+      function banner(kind, text, action) {
+        var c = kind === "error" ? ["#fef2f2", "#b91c1c", "#fecaca"] : ["#fffbeb", "#92400e", "#fde68a"];
+        return h(
+          "div",
+          { style: "display:flex;align-items:center;gap:12px;padding:10px 14px;margin-bottom:10px;border-radius:8px;font-size:13px;background:" + c[0] + ";color:" + c[1] + ";border:1px solid " + c[2] },
+          [h("span", { style: "flex:1" }, text), action || null]
+        );
+      }
+      function chip(r) {
+        var lv = MOD_LEVEL[r.level] || MOD_LEVEL.error;
+        return h(
+          "span",
+          { style: "display:inline-block;margin:2px 6px 2px 0;padding:1px 8px;border-radius:999px;font-size:12px;background:" + lv.bg + ";color:" + lv.fg },
+          (MOD_SOURCE[r.source] || r.source) + " · " + lv.text + (r.detail ? "：" + r.detail : "")
+        );
+      }
+      function input(model, key, placeholder, width) {
+        return h("input", {
+          value: model[key],
+          placeholder: placeholder,
+          onInput: function (e) {
+            model[key] = e.target.value;
+          },
+          style: "width:" + (width || "100%") + ";padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px"
+        });
+      }
+
+      /* ---------- 各块 */
+      function warnings(d) {
+        var out = [];
+        if (!d.enabled) {
+          out.push(banner("warn", "评论审核还没开：到「插件 → theme-x 助手 → 设置 → 评论审核」里打开。下面的「试一下」不开也能用。"));
+          return out;
+        }
+        if (!d.haloEnabled) out.push(banner("warn", "Halo 的评论功能是关着的（系统 → 设置 → 评论设置 → 启用评论），现在不会有新评论进来。"));
+        if (!d.haloReview) {
+          out.push(
+            banner(
+              "error",
+              "Halo 的「新评论审核」没开：新评论会先公开，插件审完不合格再撤回，中间有几秒能被看到。建议打开，这样评论先进待审，审完合格的由插件放出来。",
+              btn("打开新评论审核", haloReview, { key: "halo", props: { type: "danger" } })
+            )
+          );
+        }
+        if (d.sources.indexOf("cloud") >= 0 && !d.cloud.ready) out.push(banner("warn", "选了云厂商，但" + (d.cloud.vendor === "aliyun" ? "阿里云" : "腾讯云") + "密钥还没配（插件设置 → 评论审核：云厂商）。没配好的这一路按「出错」处理。"));
+        if (d.sources.indexOf("llm") >= 0 && !d.llm.ready) out.push(banner("warn", "选了大模型，但接口地址、Key、模型名没配完（插件设置 → 评论审核：大模型）。没配好的这一路按「出错」处理。"));
+        if (d.notify.mode !== "off") {
+          if (!d.emailSender.enabled) out.push(banner("warn", "Halo 的邮件通知没开，提醒发不出去：到「系统 → 通知设置 → 邮件通知」里配好发件邮箱。"));
+          var ok = (d.recipients || []).filter(function (r) {
+            return r.ok;
+          });
+          if (!ok.length) out.push(banner("warn", "没有能收到提醒的邮箱：超级管理员的邮箱都没验证，也没填额外收件邮箱。"));
+        }
+        return out;
+      }
+
+      function statusCard(d) {
+        var order = d.sources
+          .map(function (s) {
+            return s === "cloud" ? (d.cloud.vendor === "aliyun" ? "阿里云" : "腾讯云") : MOD_SOURCE[s];
+          })
+          .join(" → ");
+        var t = (d.stats && d.stats.today) || {};
+        var w = (d.stats && d.stats.week) || {};
+        var sum = function (s) {
+          return "自动通过 " + (s.auto || 0) + " · 待审 " + (s.pending || 0) + " · 垃圾 " + (s.spam || 0) + " · 人工通过 " + (s.manual || 0) + " · 漏网 " + (s.missed || 0);
+        };
+        var n = d.notify;
+        var mode = MOD_MODE[n.mode] || n.mode;
+        if (n.mode === "instant") mode += "（" + n.windowMinutes + " 分钟内的合并成一封）";
+        if (n.mode === "threshold") mode += "（攒到 " + n.threshold + " 条）";
+        if (n.mode === "daily") mode += "（每天 " + n.dailyAt + "）";
+        if (n.remindHours > 0 && n.mode !== "off") mode += "；超过 " + n.remindHours + " 小时没处理再催";
+        return card(
+          "状态",
+          [
+            line("评论审核", d.enabled ? "开着" + (d.since ? "（" + fmtTime(d.since) + " 之后的新评论）" : "") : "关着", d.enabled ? "#15803d" : "#b45309"),
+            line("宽严", d.strict ? "从严：可疑的留待审，接口出错也留待审" : "从宽：只拦明确的垃圾"),
+            line("审核方式", order || "一个都没选（全部留待审）", order ? null : "#b91c1c"),
+            d.sources.indexOf("cloud") >= 0 || d.sources.indexOf("llm") >= 0
+              ? line("今天外部调用", d.callsToday + (d.dailyCap ? " / " + d.dailyCap + " 次" : " 次（不限）"))
+              : null,
+            line("今天", sum(t)),
+            line("最近 7 天", sum(w)),
+            line("提醒", mode),
+            line(
+              "收件人",
+              (d.recipients || []).length
+                ? h(
+                    "div",
+                    null,
+                    d.recipients.map(function (r) {
+                      return h("div", { style: "color:" + (r.ok ? "#111827" : "#b45309") }, (r.type === "admin" ? "管理员 " + r.name + " · " : "") + (r.email || "（没填邮箱）") + (r.ok ? "" : " — " + r.note));
+                    })
+                  )
+                : "没有",
+              (d.recipients || []).length ? null : "#b45309"
+            ),
+            d.lastNotify && d.lastNotify.lastSent ? line("上次提醒", fmtTime(d.lastNotify.lastSent)) : null,
+            h("div", { style: "display:flex;gap:8px;margin-top:8px" }, [btn("发一封测试邮件", testEmail, { key: "email" }), btn("刷新", reload, { key: "reload" })])
+          ]
+        );
+      }
+
+      function itemView(it) {
+        var id = it.kind + "/" + it.name;
+        var acts = [];
+        var one = [it];
+        if (tab.value === "pending" || tab.value === "spam" || tab.value === "missed") acts.push(btn("通过", function () { act("approve", one); }, { key: "act", props: { type: "secondary" } }));
+        if (tab.value === "pending" || tab.value === "manual-pass" || tab.value === "missed") acts.push(btn("标成垃圾", function () { act("spam", one); }, { key: "act" }));
+        if (tab.value === "pass") acts.push(btn("撤回（漏网）", function () { act("withdraw", one); }, { key: "act", props: { type: "danger" } }));
+        if (tab.value !== "pass" && tab.value !== "manual-pass") acts.push(btn("删除", function () { act("delete", one); }, { key: "act" }));
+        if (it.email) acts.push(btn("拉黑邮箱", function () { addRule("blacklist", [it.email], "黑名单"); }, { key: "rule" }));
+        if (it.ip) acts.push(btn("拉黑 IP", function () { addRule("blacklist", [it.ip], "黑名单"); }, { key: "rule" }));
+        return h("div", { style: "display:flex;gap:12px;padding:12px 0;border-top:1px solid #f3f4f6" }, [
+          h("input", {
+            type: "checkbox",
+            checked: !!picked[id],
+            onChange: function (e) {
+              if (e.target.checked) picked[id] = it;
+              else delete picked[id];
+            },
+            style: "margin-top:4px"
+          }),
+          h("div", { style: "flex:1;min-width:0" }, [
+            h("div", { style: "display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline" }, [
+              h("b", null, it.author || "匿名"),
+              it.email ? h("span", { style: "color:#6b7280" }, it.email) : null,
+              it.website ? h("a", { href: it.website, target: "_blank", rel: "noopener noreferrer", style: "color:#2563eb" }, it.website) : null,
+              it.ip ? h("span", { style: "color:#9ca3af" }, "IP " + it.ip) : null,
+              h("span", { style: "color:#9ca3af" }, fmtTime(it.created) + (it.kind === "Reply" ? " · 回复" : "")),
+              it.subjectTitle
+                ? h("span", { style: "color:#6b7280" }, [
+                    "在 ",
+                    it.subjectUrl ? h("a", { href: it.subjectUrl, target: "_blank", rel: "noopener", style: "color:#2563eb" }, "《" + it.subjectTitle + "》") : "《" + it.subjectTitle + "》"
+                  ])
+                : null
+            ]),
+            h("div", { style: "margin:6px 0;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;color:#111827" }, it.content || "（空）"),
+            h("div", null, (it.reasons || []).map(chip)),
+            it.decidedBy === "manual" ? h("div", { style: "font-size:12px;color:#9ca3af" }, "人工处理于 " + fmtTime(it.checkedAt)) : null,
+            h("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:6px" }, acts)
+          ])
+        ]);
+      }
+
+      function listCard(d) {
+        var counts = (d && d.counts) || {};
+        var tabs = h(
+          "div",
+          { style: "display:flex;flex-wrap:wrap;gap:6px" },
+          MOD_TABS.map(function (t) {
+            var on = tab.value === t.key;
+            var n = counts[t.key];
+            return h(
+              "button",
+              {
+                type: "button",
+                onClick: function () {
+                  tab.value = t.key;
+                  loadList();
+                },
+                style:
+                  "padding:4px 12px;border-radius:999px;font-size:13px;cursor:pointer;border:1px solid " +
+                  (on ? "#111827" : "#e5e7eb") +
+                  ";background:" +
+                  (on ? "#111827" : "#fff") +
+                  ";color:" +
+                  (on ? "#fff" : "#374151")
+              },
+              t.label + (n != null ? " " + n : "")
+            );
+          })
+        );
+        var sel = Object.keys(picked).map(function (k) {
+          return picked[k];
+        });
+        var batch = [];
+        if (items.value.length) {
+          batch.push(
+            h("label", { style: "display:flex;align-items:center;gap:6px;color:#6b7280" }, [
+              h("input", {
+                type: "checkbox",
+                checked: sel.length > 0 && sel.length === items.value.length,
+                onChange: function (e) {
+                  items.value.forEach(function (it) {
+                    var id = it.kind + "/" + it.name;
+                    if (e.target.checked) picked[id] = it;
+                    else delete picked[id];
+                  });
+                }
+              }),
+              "全选（" + sel.length + "）"
+            ])
+          );
+          if (sel.length) {
+            if (tab.value === "pending" || tab.value === "spam" || tab.value === "missed") batch.push(btn("通过选中的", function () { act("approve", sel); }, { key: "act", props: { type: "secondary" } }));
+            if (tab.value === "pending" || tab.value === "manual-pass" || tab.value === "missed") batch.push(btn("选中的标成垃圾", function () { act("spam", sel); }, { key: "act" }));
+            if (tab.value === "pass") batch.push(btn("撤回选中的", function () { act("withdraw", sel); }, { key: "act", props: { type: "danger" } }));
+            if (tab.value !== "pass" && tab.value !== "manual-pass") batch.push(btn("删除选中的", function () { act("delete", sel); }, { key: "act" }));
+          }
+        }
+        var s = suggest.value;
+        return card(
+          "评论",
+          [
+            tabs,
+            s
+              ? h("div", { style: "margin-top:10px;padding:10px 12px;border-radius:6px;background:#eff6ff;color:#1e3a8a" }, [
+                  h("div", null, "刚撤回的评论里有这些，要不要拉黑（以后直接判垃圾）："),
+                  h("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:6px" }, [
+                    s.emails.length ? btn("拉黑邮箱 " + s.emails.join("、"), function () { addRule("blacklist", s.emails, "黑名单"); }, { key: "rule" }) : null,
+                    s.ips.length ? btn("拉黑 IP " + s.ips.join("、"), function () { addRule("blacklist", s.ips, "黑名单"); }, { key: "rule" }) : null,
+                    s.domains.length ? btn("拉黑域名 " + s.domains.join("、"), function () { addRule("blacklist", s.domains, "黑名单"); }, { key: "rule" }) : null,
+                    btn("不用了", function () { suggest.value = null; })
+                  ])
+                ])
+              : null,
+            batch.length ? h("div", { style: "display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px" }, batch) : null,
+            h(
+              "div",
+              { style: "margin-top:6px" },
+              listLoading.value
+                ? [h(C.VLoading)]
+                : items.value.length
+                  ? items.value.map(itemView)
+                  : [h("div", { style: "padding:16px 0;color:#9ca3af" }, tab.value === "pending" ? "没有待审的评论" : "这里是空的")]
+            )
+          ]
+        );
+      }
+
+      function testCard() {
+        var r = test.result;
+        var dec = r && MOD_DECISION[r.decision];
+        return card("试一下", [
+          h("div", { style: "color:#6b7280;margin-bottom:8px" }, "用现在的设置审一段内容，看看会怎么判（会真的调云厂商 / 大模型，算进每日次数）。不会存下任何东西。"),
+          h("textarea", {
+            value: test.text,
+            rows: 3,
+            placeholder: "评论内容，比如：加微信 abc12345 领取免费资料",
+            onInput: function (e) {
+              test.text = e.target.value;
+            },
+            style: "display:block;width:100%;margin-bottom:6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;line-height:1.6;resize:vertical"
+          }),
+          h("div", { style: "display:flex;gap:6px;margin-bottom:8px" }, [input(test, "author", "昵称（可选）", "40%"), input(test, "website", "网址（可选）", "60%")]),
+          btn("审一下", runTest, { key: "test", props: { disabled: !!busy.value || !test.text.trim() } }),
+          r
+            ? h("div", { style: "margin-top:10px;padding:10px 12px;border-radius:6px;background:#f9fafb" }, [
+                h("div", { style: "font-weight:600;color:" + (dec ? dec[1] : "#111827") }, (dec ? dec[0] : r.decision) + "（用时 " + (r.ms / 1000).toFixed(1) + " 秒）"),
+                h("div", { style: "margin-top:4px" }, (r.findings || []).length ? r.findings.map(chip) : "一路都没跑（没选审核方式）")
+              ])
+            : null
+        ]);
+      }
+
+      function ruleCard(d) {
+        var rs = (d && d.rescan) || {};
+        var words = function () {
+          return ruleText.value.split(/[\n,，、]+/);
+        };
+        return card("规则与复查", [
+          h("div", { style: "color:#6b7280;margin-bottom:6px" }, "一次可以加好几个，用逗号或换行隔开。完整的规则在「插件 → theme-x 助手 → 设置 → 评论审核：本地规则」。"),
+          h("input", {
+            value: ruleText.value,
+            placeholder: "词、域名、IP 或邮箱",
+            onInput: function (e) {
+              ruleText.value = e.target.value;
+            },
+            style: "width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;margin-bottom:8px"
+          }),
+          h("div", { style: "display:flex;flex-wrap:wrap;gap:6px" }, [
+            btn("加屏蔽词（判垃圾）", function () { addRule("block", words(), "屏蔽词"); }, { key: "rule" }),
+            btn("加可疑词（留待审）", function () { addRule("suspect", words(), "可疑词"); }, { key: "rule" }),
+            btn("加白名单域名", function () { addRule("whitelist", words(), "白名单"); }, { key: "rule" }),
+            btn("加黑名单", function () { addRule("blacklist", words(), "黑名单"); }, { key: "rule" })
+          ]),
+          h("div", { style: "margin-top:16px;font-weight:600" }, "全量复查"),
+          h("div", { style: "color:#6b7280;margin:2px 0 8px" }, "规则改了以后，把已经公开的评论按新规则再过一遍，不该公开的撤回。开启审核之前的老评论也能用这个查。"),
+          h("div", { style: "display:flex;flex-wrap:wrap;align-items:center;gap:10px" }, [
+            h(
+              "select",
+              {
+                value: rescanDays.value,
+                onChange: function (e) {
+                  rescanDays.value = e.target.value;
+                },
+                style: "padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px"
+              },
+              [["30", "最近 30 天"], ["90", "最近 90 天"], ["365", "最近一年"], ["0", "全部"]].map(function (o) {
+                return h("option", { value: o[0] }, o[1]);
+              })
+            ),
+            h("label", { style: "display:flex;align-items:center;gap:4px" }, [
+              h("input", {
+                type: "checkbox",
+                checked: rescanExternal.value,
+                onChange: function (e) {
+                  rescanExternal.value = e.target.checked;
+                }
+              }),
+              "连同云厂商 / 大模型一起查（按量计费）"
+            ]),
+            btn(rs.running ? "复查中…" : "开始复查", rescan, { key: "rescan", props: { disabled: !!busy.value || !!rs.running } })
+          ]),
+          rs.startedAt
+            ? h(
+                "div",
+                { style: "margin-top:8px;color:" + (rs.error ? "#b91c1c" : "#374151") },
+                (rs.running ? "正在复查：" : "上次复查（" + fmtTime(rs.finishedAt) + "）：") +
+                  "查了 " + (rs.checked || 0) + " 条，撤回 " + (rs.withdrawn || 0) + " 条" + (rs.error ? "；出错：" + rs.error : "")
+              )
+            : null
+        ]);
+      }
+
+      /* ---------- 友链申请 */
+      function loadLinks() {
+        return ax()
+          .get(MOD + "/link-applications")
+          .then(function (r) {
+            links.value = r.data || { enabled: false, items: [] };
+          })
+          ["catch"](function () {
+            links.value = { enabled: false, items: [] };
+          });
+      }
+
+      function linkAct(action, item) {
+        var go = function () {
+          return run("link", function () {
+            return ax()
+              .post(MOD + "/-/link-act", { action: action, names: [item.name] })
+              .then(function (r) {
+                var d = r.data || {};
+                var res = (d.results || [])[0] || {};
+                if (res.error) C.Toast.error(res.error);
+                else C.Toast.success({ reject: "已拒绝", delete: "已删除", recheck: "重新查完了" }[action]);
+                return loadLinks();
+              });
+          });
+        };
+        if (action === "delete") {
+          C.Dialog.warning({ title: "删除这条友链申请？", description: "删了就找不回来了。", confirmText: "删除", cancelText: "取消", onConfirm: go });
+        } else {
+          go();
+        }
+      }
+
+      function linkCard() {
+        var d = links.value;
+        if (!d || (!d.enabled && !(d.items || []).length)) return null;
+        var statusText = { PENDING: "等审核", APPROVING: "正在同意", REJECTED: "已拒绝", APPROVED: "已同意" };
+        return card(
+          "友链申请",
+          [
+            h("div", { style: "color:#6b7280;margin-bottom:6px" }, [
+              d.enabled ? "新申请由插件先查一遍，明显的垃圾已经自动拒绝。同意要到 " : "友链申请审核没开（插件设置 → 友链申请审核）。同意要到 ",
+              h("a", { href: "/console/links", style: "color:#2563eb" }, "「链接」"),
+              " 页面右上角的「友链申请」里点。"
+            ]),
+            (d.items || []).length
+              ? h(
+                  "div",
+                  null,
+                  d.items.map(function (it) {
+                    var acts = [];
+                    if (it.status === "PENDING") acts.push(btn("拒绝", function () { linkAct("reject", it); }, { key: "link" }));
+                    acts.push(btn("重新检查", function () { linkAct("recheck", it); }, { key: "link" }));
+                    acts.push(btn("删除", function () { linkAct("delete", it); }, { key: "link" }));
+                    if (it.email) acts.push(btn("拉黑邮箱", function () { addRule("blacklist", [it.email], "黑名单"); }, { key: "rule" }));
+                    return h("div", { style: "padding:12px 0;border-top:1px solid #f3f4f6" }, [
+                      h("div", { style: "display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline" }, [
+                        h("b", null, it.displayName || "（没填名称）"),
+                        h("a", { href: it.url, target: "_blank", rel: "noopener noreferrer", style: "color:#2563eb" }, it.url),
+                        it.email ? h("span", { style: "color:#6b7280" }, it.email) : null,
+                        h("span", { style: "color:#9ca3af" }, fmtTime(it.created) + " · " + (statusText[it.status] || it.status)),
+                        it.state === "spam" ? h("span", { style: "color:#b91c1c;font-size:12px" }, "判为垃圾") : null
+                      ]),
+                      it.description ? h("div", { style: "margin:4px 0;color:#111827" }, it.description) : null,
+                      it.backlink ? h("div", { style: "font-size:12px;color:#6b7280" }, ["友链页：", h("a", { href: it.backlink, target: "_blank", rel: "noopener noreferrer", style: "color:#2563eb" }, it.backlink)]) : null,
+                      h("div", null, (it.reasons || []).length ? it.reasons.map(chip) : h("span", { style: "font-size:12px;color:#9ca3af" }, "还没检查（每分钟查一次新申请）")),
+                      h("div", { style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:6px" }, acts)
+                    ]);
+                  })
+                )
+              : h("div", { style: "padding:8px 0;color:#9ca3af" }, "没有等审核的友链申请")
+          ],
+          btn("刷新", loadLinks, { key: "links" })
+        );
+      }
+
+      return function () {
+        var d = st.value;
+        return h("div", null, [
+          h(C.VPageHeader, { title: "评论审核" }, {
+            icon: function () {
+              return h(C.IconMessage || C.IconLink);
+            }
+          }),
+          h("div", { style: "margin:16px;max-width:960px" }, !d ? [h(C.VLoading)] : [].concat(warnings(d), [statusCard(d), listCard(d), linkCard(), testCard(), ruleCard(d)]))
+        ]);
+      };
+    }
+  });
+
   /* ---------------------------------------------------------------- 进后台时的提示 */
   function canManageThemes() {
     try {
@@ -1730,6 +2387,20 @@
             searchable: true,
             permissions: ["system:plugins:manage"],
             menu: { name: "写作助手", group: "content", icon: Vue.markRaw(C.IconBookRead || C.IconLink), priority: 54 }
+          }
+        }
+      },
+      {
+        parentName: "Root",
+        route: {
+          path: "/theme-x/comment-review",
+          name: "ThemeXCommentReview",
+          component: Vue.markRaw(CommentReviewPage),
+          meta: {
+            title: "评论审核",
+            searchable: true,
+            permissions: ["system:comments:manage"],
+            menu: { name: "评论审核", group: "content", icon: Vue.markRaw(C.IconMessage || C.IconLink), priority: 55 }
           }
         }
       }

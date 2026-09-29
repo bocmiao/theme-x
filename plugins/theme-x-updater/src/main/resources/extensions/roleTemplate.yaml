@@ -66,3 +66,20 @@ rules:
   - apiGroups: ["console.api.themexupdater.halo.run"]
     resources: ["writing", "writing/slug-strategy", "writing/ai-activate", "writing/ai-test", "writing/ai-regenerate"]
     verbs: ["get", "list", "create"]
+---
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-theme-x-comment-moderation
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    # 能管理评论的角色自动带上「评论审核」页
+    rbac.authorization.halo.run/aggregate-to-role-template-manage-comments: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Comments Management"
+    rbac.authorization.halo.run/display-name: "评论审核"
+rules:
+  - apiGroups: ["console.api.themexupdater.halo.run"]
+    resources: ["moderation", "moderation/act", "moderation/rule", "moderation/test", "moderation/test-email", "moderation/halo-review", "moderation/rescan", "moderation/link-act"]
+    verbs: ["get", "list", "create"]

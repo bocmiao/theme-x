@@ -605,6 +605,7 @@
     var API = "/apis/api.link.halo.run/v1alpha1/link-applications";
     var challenge = "";
     var busy = false;
+    var openedAt = 0; // 打开表单的时间：3 秒内就提交的多半是脚本
     var filled = {}; // 自动填进去的值：访客没改过的，换了网址可以再换
 
     function say(text, kind) {
@@ -697,6 +698,7 @@
     on(openBtn, "click", function () {
       if (!form) return;
       form.hidden = false;
+      openedAt = Date.now();
       openBtn.hidden = true;
       say("");
       loadCaptcha().then(function (ok) {
@@ -740,6 +742,18 @@
         var el = form.querySelector('[name="' + name + '"]');
         return el ? el.value.trim() : "";
       };
+      // 陷阱栏被填了：是机器人，假装成功，不真的提交
+      if (get("company")) {
+        form.hidden = true;
+        if (openBtn) openBtn.hidden = true;
+        say(t("js.applyOk", "已提交，等我审核通过就会出现在友链列表里。"), "ok");
+        return;
+      }
+      if (openedAt && Date.now() - openedAt < 3000) {
+        say(t("js.applyTooFast", "填得有点快，确认一下信息再提交。"), "error");
+        openedAt = Date.now() - 2000;
+        return;
+      }
       var feed = get("feedUrl");
       var body = {
         displayName: get("displayName"),
@@ -747,6 +761,7 @@
         logo: get("logo"),
         description: get("description"),
         email: get("email"),
+        backlink: get("backlink"),
         feedUrls: feed ? [feed] : [],
         challengeId: challenge,
         captchaCode: get("captchaCode")

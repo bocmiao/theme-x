@@ -120,3 +120,374 @@ spec:
           label: 额外要求（可选）
           rows: 3
           help: 会附在给模型的要求后面，比如「语气轻松一点」「最后一句说说适合谁读」。
+    - group: moderation
+      label: 评论审核
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 评论审核
+          value: "off"
+          help: 开启后，新评论和回复先由插件审一遍：没问题的自动公开，可疑的留待审，明确的垃圾不公开。要配合 Halo「系统 → 设置 → 评论设置」里的「新评论审核」一起用（后台「内容 → 评论审核」页上可以一键打开），不然评论会先公开、再被撤回。开启之前就有的评论不动，要查它们用那一页的「全量复查」。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: select
+          name: strictness
+          label: 宽严
+          value: "strict"
+          options:
+            - label: 从严：可疑的留待审，接口出错也留待审，全部通过才公开
+              value: "strict"
+            - label: 从宽：只拦明确的垃圾，可疑的直接公开（后台看得到理由）
+              value: "loose"
+        - $formkit: checkbox
+          name: sources
+          label: 审核方式（至少选一个，可以多选）
+          value: ["local"]
+          validation: required
+          help: 本地规则总是最先跑，判成垃圾的不再往下送；云厂商和大模型的先后在下一项调。
+          options:
+            - label: 本地规则（免费，规则在「评论审核：本地规则」里调）
+              value: "local"
+            - label: 云厂商（腾讯云 / 阿里云内容安全，按量收费）
+              value: "cloud"
+            - label: 大模型（OpenAI 兼容接口，按量收费）
+              value: "llm"
+        - $formkit: select
+          name: order
+          label: 云厂商和大模型都选了时，先问谁
+          value: "cloud-first"
+          options:
+            - label: 先云厂商，再大模型
+              value: "cloud-first"
+            - label: 先大模型，再云厂商
+              value: "llm-first"
+        - $formkit: number
+          name: dailyCap
+          label: 每天最多调用外部审核（次）
+          number: integer
+          min: 0
+          value: 1000
+          help: 云厂商和大模型每天一共最多调这么多次，用完了当天剩下的评论按「出错」处理（从严时留待审）。0 表示不限。同样的内容同一家只调一次。
+        - $formkit: number
+          name: spamKeepDays
+          label: 垃圾评论保留（天）
+          number: integer
+          min: 0
+          value: 30
+          help: 判成垃圾的评论不公开，保留这么多天后自动删除，方便你翻查误判。0 表示一直留着。
+    - group: moderationRules
+      label: 评论审核：本地规则
+      formSchema:
+        - $formkit: select
+          name: builtin
+          label: 内置词库
+          value: "on"
+          help: 内置一小份几乎不会出现在正常评论里的词（博彩、代开发票、裸聊之类，命中判垃圾）和一些推广用语（免费领取、加我、私聊之类，命中算可疑）。涉政等敏感内容交给云厂商，本地不维护这类词表。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: textarea
+          name: blockWords
+          label: 屏蔽词（命中判垃圾）
+          rows: 4
+          help: 一行一个。比对前会去掉空格、符号、零宽字符并转成半角，「加 微❤信」也认得出是「加微信」；写成 /正则/ 的按正则匹配。昵称和网址栏也会查。
+        - $formkit: textarea
+          name: suspectWords
+          label: 可疑词（命中留待审）
+          rows: 4
+          help: 写法同上。「评论审核」页上也能一键把词加进来。
+        - $formkit: checkbox
+          name: rules
+          label: 还要检查
+          value: ["links", "contact", "website", "burst", "duplicate", "repeat"]
+          options:
+            - label: 正文里的外部链接（自己的站、友链、白名单里的域名不算）
+              value: "links"
+            - label: 联系方式（手机号、QQ、微信、Telegram、邮箱地址）
+              value: "contact"
+            - label: 网址栏填了网址（友链、白名单里的不算）
+              value: "website"
+            - label: 连发（同一个 IP 或邮箱短时间内发好几条）
+              value: "burst"
+            - label: 重复内容（24 小时内同样的内容又出现）
+              value: "duplicate"
+            - label: 大量重复字符
+              value: "repeat"
+            - label: 没有中文（纯外文评论）
+              value: "foreign"
+        - $formkit: number
+          name: suspectLinks
+          label: 外部链接达到几个算可疑
+          number: integer
+          min: 1
+          value: 1
+        - $formkit: number
+          name: spamLinks
+          label: 外部链接达到几个判垃圾
+          number: integer
+          min: 1
+          value: 3
+        - $formkit: number
+          name: burstCount
+          label: 连发：几条算可疑
+          number: integer
+          min: 2
+          value: 3
+          help: 达到这个数的 3 倍判垃圾。
+        - $formkit: number
+          name: burstMinutes
+          label: 连发：几分钟之内
+          number: integer
+          min: 1
+          value: 5
+        - $formkit: textarea
+          name: whitelist
+          label: 白名单域名
+          rows: 3
+          help: 一行一个，比如 github.com，子域名一起算。站点自己的域名和「链接」插件里的友链自动算白名单。
+        - $formkit: textarea
+          name: blacklist
+          label: 黑名单
+          rows: 4
+          help: 一行一个，命中直接判垃圾：IP（1.2.3.4，或者 1.2.3.* 一整段）、邮箱（spam@x.com，或者 @x.com 整个域）、域名（x.com，正文链接和网址栏都查）。
+        - $formkit: number
+          name: trustAfter
+          label: 熟人：同一个邮箱被人工通过几次后
+          number: integer
+          min: 0
+          value: 3
+          help: 达到以后，本地规则判的「可疑」按通过算（云厂商和大模型照查，判垃圾的照拦）。0 表示不启用。
+    - group: moderationCloud
+      label: 评论审核：云厂商
+      formSchema:
+        - $formkit: select
+          id: moderationVendor
+          name: vendor
+          label: 用哪家
+          value: "tencent"
+          help: 发过去的是评论的昵称、网址和正文，不发 IP 和邮箱。
+          options:
+            - label: 腾讯云 文本内容安全
+              value: "tencent"
+            - label: 阿里云 内容安全（文本审核增强版）
+              value: "aliyun"
+        - $formkit: secret
+          if: "$get(moderationVendor).value === 'tencent'"
+          name: tencentSecret
+          label: 腾讯云密钥
+          help: 在「访问管理 → API 密钥管理」里拿；建议新建一个只授权 QcloudTMSFullAccess 的子用户。密钥存在 Halo 的密钥库里，不明文放在设置里。
+          requiredKeys:
+            - key: secretId
+              help: SecretId
+            - key: secretKey
+              help: SecretKey
+        - $formkit: select
+          if: "$get(moderationVendor).value === 'tencent'"
+          name: tencentRegion
+          label: 地域
+          value: "ap-guangzhou"
+          options:
+            - label: 广州
+              value: "ap-guangzhou"
+            - label: 上海
+              value: "ap-shanghai"
+            - label: 北京
+              value: "ap-beijing"
+            - label: 新加坡
+              value: "ap-singapore"
+        - $formkit: text
+          if: "$get(moderationVendor).value === 'tencent'"
+          name: tencentBizType
+          label: 策略 BizType（可选）
+          help: 在内容安全控制台配了自定义审核策略才填，不填用默认策略。
+        - $formkit: text
+          if: "$get(moderationVendor).value === 'tencent'"
+          name: tencentEndpoint
+          label: 接入域名（一般不用填）
+          help: 默认 tms.tencentcloudapi.com，也可以填就近的，比如 tms.ap-shanghai.tencentcloudapi.com。
+        - $formkit: secret
+          if: "$get(moderationVendor).value === 'aliyun'"
+          name: aliyunSecret
+          label: 阿里云密钥
+          help: RAM 访问控制里创建的 AccessKey；建议用只授权内容安全（AliyunYundunGreenWebFullAccess）的 RAM 用户。
+          requiredKeys:
+            - key: accessKeyId
+              help: AccessKey ID
+            - key: accessKeySecret
+              help: AccessKey Secret
+        - $formkit: select
+          if: "$get(moderationVendor).value === 'aliyun'"
+          name: aliyunRegion
+          label: 地域
+          value: "cn-shanghai"
+          options:
+            - label: 上海
+              value: "cn-shanghai"
+            - label: 北京
+              value: "cn-beijing"
+            - label: 杭州
+              value: "cn-hangzhou"
+            - label: 深圳
+              value: "cn-shenzhen"
+            - label: 成都
+              value: "cn-chengdu"
+            - label: 新加坡
+              value: "ap-southeast-1"
+        - $formkit: text
+          if: "$get(moderationVendor).value === 'aliyun'"
+          name: aliyunService
+          label: 检测服务
+          value: "comment_detection"
+          help: 默认 comment_detection（公聊评论检测），一般不用改。
+        - $formkit: text
+          if: "$get(moderationVendor).value === 'aliyun'"
+          name: aliyunEndpoint
+          label: 接入域名（一般不用填）
+          help: 默认 green-cip.<地域>.aliyuncs.com。
+    - group: moderationLlm
+      label: 评论审核：大模型
+      formSchema:
+        - $formkit: select
+          id: moderationLlmApi
+          name: api
+          label: 用哪个接口
+          value: "summary"
+          help: 发过去的是文章标题和评论的昵称、网址、正文，不发 IP 和邮箱。
+          options:
+            - label: 沿用「AI 摘要」里配的接口和模型
+              value: "summary"
+            - label: 单独配一个
+              value: "custom"
+        - $formkit: text
+          if: "$get(moderationLlmApi).value === 'custom'"
+          name: baseUrl
+          label: 接口地址
+          value: "https://api.deepseek.com"
+          help: OpenAI 兼容的接口地址（后面不用带 /chat/completions），写法和「AI 摘要」那一组一样。
+        - $formkit: secret
+          if: "$get(moderationLlmApi).value === 'custom'"
+          name: secret
+          label: API Key
+          requiredKeys:
+            - key: apiKey
+              help: 在那家服务的控制台里申请的 Key
+        - $formkit: text
+          if: "$get(moderationLlmApi).value === 'custom'"
+          name: model
+          label: 模型名
+          value: "deepseek-chat"
+        - $formkit: textarea
+          name: extra
+          label: 额外的审核要求（可选）
+          rows: 3
+          help: 附在给模型的审核标准后面，比如「允许贴 GitHub 链接」「讨论某某话题的一律 review」。
+    - group: moderationNotify
+      label: 评论审核：提醒
+      formSchema:
+        - $formkit: select
+          id: moderationNotifyMode
+          name: mode
+          label: 什么时候提醒
+          value: "instant"
+          help: 提醒走 Halo 的邮件通知，要先在「系统 → 通知设置 → 邮件通知」里配好发件邮箱；「评论审核」页上能发一封测试邮件。
+          options:
+            - label: 有待审评论就提醒
+              value: "instant"
+            - label: 待审攒到一定条数再提醒
+              value: "threshold"
+            - label: 每天定时汇总一封
+              value: "daily"
+            - label: 不提醒
+              value: "off"
+        - $formkit: number
+          if: "$get(moderationNotifyMode).value === 'instant' || $get(moderationNotifyMode).value === 'threshold'"
+          name: windowMinutes
+          label: 合并窗口（分钟）
+          number: integer
+          min: 1
+          value: 10
+          help: 第一条马上发，之后这段时间内再来的合并到下一封里。被人刷评论时只会收到几封汇总，不会被邮件轰炸。
+        - $formkit: number
+          if: "$get(moderationNotifyMode).value === 'threshold'"
+          name: threshold
+          label: 攒到几条
+          number: integer
+          min: 1
+          value: 5
+        - $formkit: text
+          if: "$get(moderationNotifyMode).value === 'daily'"
+          name: dailyAt
+          label: 每天几点
+          value: "09:00"
+          help: 24 小时制，比如 09:00、21:30。
+        - $formkit: number
+          name: remindHours
+          label: 超过几小时没处理再催一次
+          number: integer
+          min: 0
+          value: 24
+          help: 最早那条待审等了这么久还没处理时再发一封。0 表示不催。
+        - $formkit: select
+          name: admins
+          label: 发给超级管理员
+          value: "on"
+          help: 管理员的邮箱要在个人中心验证过，Halo 才会给它发邮件。
+          options:
+            - label: 发
+              value: "on"
+            - label: 不发
+              value: "off"
+        - $formkit: textarea
+          name: emails
+          label: 额外收件邮箱
+          rows: 3
+          help: 一行一个，不用验证，直接发。
+    - group: linkApply
+      label: 友链申请审核
+      formSchema:
+        - $formkit: select
+          name: enabled
+          label: 友链申请审核
+          value: "off"
+          help: 「链接」插件收到新的友链申请后，再由这里查一遍：申请的名称、简介连同对方首页的标题和内容，走「评论审核」同一套规则（本地规则 / 云厂商 / 大模型，宽严也跟那边）；另外看网站能不能打开、有没有跳到别的域名、有没有放本站链接、是不是重复申请。明显的垃圾直接拒绝，其余的在「内容 → 评论审核」页下面列出检查结果，同意还是在「链接」插件里点。「链接」插件自己的验证码、按 IP 限频、待审数量上限照常起作用。
+          options:
+            - label: 开启
+              value: "on"
+            - label: 关闭
+              value: "off"
+        - $formkit: checkbox
+          name: checks
+          label: 要检查的
+          value: ["content", "reachable", "redirect", "backlink", "duplicate"]
+          options:
+            - label: 对方首页的内容（标题、简介、正文开头一起送审，挂羊头卖狗肉的站也拦得住）
+              value: "content"
+            - label: 网站能不能打开
+              value: "reachable"
+            - label: 打开后有没有跳到别的域名
+              value: "redirect"
+            - label: 有没有放本站链接（填了友链页地址就看那一页，没填看首页）
+              value: "backlink"
+            - label: 重复申请、已经是友链、短时间内反复申请
+              value: "duplicate"
+        - $formkit: number
+          name: perDay
+          label: 同一个邮箱或网站 24 小时内最多申请几次
+          number: integer
+          min: 1
+          value: 2
+          help: 超过就判垃圾。同一个网站已经有一条在等审核时，新的一条也判垃圾。
+        - $formkit: select
+          name: spamAction
+          label: 判成垃圾的申请
+          value: "reject"
+          options:
+            - label: 标成「已拒绝」（留着记录）
+              value: "reject"
+            - label: 直接删掉
+              value: "delete"

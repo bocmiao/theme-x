@@ -8,8 +8,15 @@ Halo 插件，给 theme-x 打配合，一个插件装齐（2.0.0 起把原来单
    填好开启并立刻抓一次——首页那个「正在关注」标签页就靠这些数据。
 3. **友链体检**（1.2.0 起）：菜单「内容 → 友链体检」，定时用 api.miao.club 的「网站可用性检测」把友链挨个查一遍，
    列出正常 / 打不开 / 跳到别的网站的，连续几次打不开的标成「失联」。只出报告，不改友链。
-5. **写作助手**（2.2.0 起）：菜单「内容 → 写作助手」，新文章别名按日期编号（`20260927-001`），勾「自动生成摘要」时用 AI 写摘要。
 4. **上传自动转 WebP**（2.0.0 起并进来）：后台上传图片前，在浏览器里把 PNG / JPEG 转成 WebP，服务器上什么都不用装。
+5. **写作助手**（2.2.0 起）：菜单「内容 → 写作助手」，新文章别名按日期编号（`20260927-001`），勾「自动生成摘要」时用 AI 写摘要。
+6. **评论审核**（2.3.0 起）：菜单「内容 → 评论审核」。新评论、回复进来时由 `CommentModerationReconciler` / `ReplyModerationReconciler`
+   交给 `ModerationService`，按 `CommentModerator` 的本地规则、腾讯云 TMS（TC3-HMAC-SHA256 签名）、阿里云 TextModeration
+   （RPC HMAC-SHA1 签名）、OpenAI 兼容大模型审一遍，结论记在评论的 label `moderation.miao.club/state` 和注解里；
+   `ModerationNotifier` 每 30 秒看一次，按设置用 Halo 的通知系统（通知类型 `comment-moderation-pending`）发邮件提醒。
+   两家云厂商的签名实现和官方 SDK 对过同一组输入，结果逐字一致。
+7. **友链申请审核**（2.3.0 起）：`LinkApplyModerator` 每分钟看一次「链接」插件的新申请（`core.halo.run/v1alpha1/LinkApplication`），
+   内容走同一套审核，另外访问对方首页做体检（自己跟重定向，每一跳都先确认不是内网 / 本机地址），明显的垃圾标成已拒绝。
 
 怎么装、怎么用见主题的 README。
 

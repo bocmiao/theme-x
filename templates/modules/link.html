@@ -100,6 +100,11 @@
             <input name="url" type="url" required placeholder="https://" autocomplete="url" />
           </label>
           <label class="x-field">
+            <span th:text="#{links.backlink}">友链页地址</span>
+            <input name="backlink" type="url" placeholder="https://" autocomplete="off" />
+            <small class="x-field-help" th:text="#{links.backlinkHelp}">选填。放了本站链接的那一页，方便我核对；不填就看你的首页</small>
+          </label>
+          <label class="x-field">
             <span th:text="#{links.logo}">头像</span>
             <input name="logo" type="url" placeholder="https://" autocomplete="off" />
           </label>
@@ -126,6 +131,11 @@
                 <iconify-icon icon="ri:refresh-line" aria-hidden="true"></iconify-icon>
               </button>
             </span>
+          </label>
+          <!--/* 防机器人：这一栏人看不到，只有自动填表的脚本会填；填了就假装提交成功、其实不发 */-->
+          <label class="x-hp" aria-hidden="true">
+            <span>Company</span>
+            <input name="company" type="text" tabindex="-1" autocomplete="off" />
           </label>
           <p class="x-apply-msg" data-apply-msg hidden></p>
           <div class="x-apply-acts">

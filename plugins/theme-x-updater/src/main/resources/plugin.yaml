@@ -12,10 +12,10 @@ spec:
   homepage: https://github.com/bocmiao/theme-x
   repo: https://github.com/bocmiao/theme-x
   displayName: "theme-x 助手"
-  description: "theme-x 的配套插件，一个装齐：检查主题新版本并一键更新（设置保留）；上传图片时在浏览器里自动转 WebP；「内容 → 友链 RSS」一键给所有友链发现并抓取 RSS（首页「正在关注」靠它）；「内容 → 友链体检」定时用 api.miao.club 检查友链还能不能打开；「内容 → 写作助手」：新文章别名按日期编号（20260927-001），勾「自动生成摘要」时用 AI 写摘要。"
+  description: "theme-x 的配套插件，一个装齐：检查主题新版本并一键更新（设置保留）；上传图片时在浏览器里自动转 WebP；「内容 → 友链 RSS」一键给所有友链发现并抓取 RSS（首页「正在关注」靠它）；「内容 → 友链体检」定时用 api.miao.club 检查友链还能不能打开；「内容 → 写作助手」：新文章别名按日期编号（20260927-001），勾「自动生成摘要」时用 AI 写摘要；「内容 → 评论审核」：新评论先经本地规则、腾讯云 / 阿里云内容安全、大模型（三选多、顺序可调、宽严可选）审一遍，可疑的留待审并发邮件提醒；友链申请也查一遍内容和对方网站，明显的垃圾自动拒绝。"
   license:
     - name: GPL-3.0
       url: https://www.gnu.org/licenses/gpl-3.0.html
-  version: 2.2.3
+  version: 2.3.0
   settingName: theme-x-updater-settings
   configMapName: theme-x-updater-configmap
