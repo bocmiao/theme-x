@@ -588,6 +588,9 @@ iconify-icon:not(:defined) { width: 1em; height: 1em; }
   gap: 16px;
   padding-bottom: 16px;
 }
+/* 卡片一律不许被压缩：读文章时这一栏高度固定、超出就滚动，
+   不加这条的话卡片（overflow:hidden）会被挤扁裁掉，而不是让这一栏滚起来 */
+.x-aside-inner > * { flex-shrink: 0; }
 /* 搜索框关掉时，第一张卡片别顶着视口上沿 */
 .x-aside-inner:first-child { padding-top: 12px; }
 /* 跟随滚动：要跟随的小组件排到下面；theme.js 的 initAsideFollow 量好高度后加上 is-following 并写 top。
