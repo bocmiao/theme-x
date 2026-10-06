@@ -4773,6 +4773,18 @@
       });
     }
 
+    /* 右栏常驻、切页时不换，但「申请友链」小卡片只有友链页的右栏里才有：
+       进友链页时把新页面里的那张放进来，离开时拿掉（initPage 里的 initLinkApply 会给新放进来的接上事件） */
+    function syncAsideApply(doc) {
+      var inner = $("[data-aside-inner]");
+      if (!inner) return;
+      $$(".x-apply--aside", inner).forEach(function (el) {
+        el.remove();
+      });
+      var fresh = doc.querySelector("[data-aside-inner] .x-apply--aside");
+      if (fresh) inner.insertBefore(document.importNode(fresh, true), inner.firstChild);
+    }
+
     function swap(doc) {
       teardownPage(); // 先收掉上一页登记的定时器和全局监听
 
@@ -4784,6 +4796,7 @@
 
       syncChrome(doc);
       syncHead(doc);
+      syncAsideApply(doc);
 
       // 兜底：无论之前发生过什么，新页面必须是可点、可滚的
       setBackgroundInert(false);
