@@ -41,7 +41,9 @@
     th:with="lk=${theme.config.links},
              myName=${#strings.isEmpty(lk?.my_name) ? site.title : lk.my_name},
              myUrl=${#strings.isEmpty(lk?.my_url) ? site.url : lk.my_url},
-             myLogo=${#strings.isEmpty(lk?.my_logo) ? (theme.config.profile?.avatar ?: site.logo) : lk.my_logo},
+             myLogoRaw=${#strings.isEmpty(lk?.my_logo) ? (theme.config.profile?.avatar ?: site.logo) : lk.my_logo},
+             siteBase=${#strings.endsWith(site.url ?: '', '/') ? #strings.substring(site.url, 0, #strings.length(site.url) - 1) : (site.url ?: '')},
+             myLogo=${#strings.startsWith(myLogoRaw ?: '', '/') and not #strings.startsWith(myLogoRaw, '//') ? siteBase + myLogoRaw : myLogoRaw},
              myDesc=${#strings.isEmpty(lk?.my_desc) ? site.subtitle : lk.my_desc},
              noApply=${theme.config.features?.comments == 'off'}"
   >
@@ -67,7 +69,8 @@
           </div>
           <div th:if="${not #strings.isEmpty(myLogo)}">
             <dt th:text="#{links.logo}">头像</dt>
-            <dd><span th:text="${myLogo}"></span></dd>
+            <!--/* 头像常是附件库里的站内地址：复制给别人的要是完整网址；显示时把 %E5… 这类编码解开，好认一些 */-->
+            <dd><span th:text="${#uris.unescapePath(myLogo)}"></span></dd>
           </div>
           <div th:if="${not #strings.isEmpty(myDesc)}">
             <dt th:text="#{links.desc}">描述</dt>
