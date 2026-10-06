@@ -65,7 +65,8 @@
     hotTab: "x:hot-tab",
     history: "x:history",
     linkMeta: "x:link-meta",
-    hint: "x:hint:"
+    hint: "x:hint:",
+    outlineFold: "x:outline-fold"
   };
 
   var root = document.documentElement;
@@ -1939,7 +1940,25 @@
       return +h.tagName.slice(1);
     });
     var top = Math.min.apply(null, levels);
+    // 每一条的上级（往前第一个级别更高的标题），以及下面有没有小节——有小节的才能折叠
+    var parents = levels.map(function (lv, i) {
+      for (var j = i - 1; j >= 0; j--) if (levels[j] < lv) return j;
+      return -1;
+    });
+    var hasKids = levels.map(function (lv, i) {
+      return i + 1 < levels.length && levels[i + 1] > lv;
+    });
+    var foldable = hasKids.some(Boolean);
+    // 访客点过「全部收起」的话，之后打开的文章也先收起（记在访客浏览器里）
+    var folded = {};
+    if (foldable && store(KEY.outlineFold) === "all") {
+      hasKids.forEach(function (k, i) {
+        if (k) folded[i] = true;
+      });
+    }
+    var rows = [];
     var links = heads.map(function (h, i) {
+      var row = node("div", "x-outline-row");
       var a = node("a", "", h.textContent.trim());
       a.href = "#" + h.id;
       a.style.setProperty("--indent", levels[i] - top);
@@ -1951,9 +1970,71 @@
           history.replaceState(history.state, "", "#" + h.id);
         } catch (err) {}
       });
-      list.appendChild(a);
+      row.appendChild(a);
+      if (hasKids[i]) {
+        row.classList.add("has-kids");
+        var btn = node("button", "x-outline-fold");
+        btn.type = "button";
+        btn.innerHTML = '<iconify-icon icon="ri:arrow-down-s-line" aria-hidden="true"></iconify-icon>';
+        on(btn, "click", function (e) {
+          e.preventDefault();
+          folded[i] = !folded[i];
+          applyFold();
+        });
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+      rows.push(row);
       return a;
     });
+
+    // 标题栏上的「全部收起 / 全部展开」（右栏常驻，换文章时先把上一篇的拿掉）
+    var summary = $(".x-outline-toggle", card);
+    $$(".x-outline-all", card).forEach(function (el) {
+      el.remove();
+    });
+    var allBtn = null;
+    if (foldable && summary) {
+      allBtn = node("button", "x-outline-all");
+      allBtn.type = "button";
+      on(allBtn, "click", function (e) {
+        // 按钮在 <summary> 里，不拦的话会顺带把整张大纲折起来
+        e.preventDefault();
+        e.stopPropagation();
+        var collapse = anyOpen();
+        hasKids.forEach(function (k, i) {
+          if (k) folded[i] = collapse;
+        });
+        store(KEY.outlineFold, collapse ? "all" : null);
+        applyFold();
+      });
+      summary.insertBefore(allBtn, summary.lastElementChild);
+    }
+    function anyOpen() {
+      return hasKids.some(function (k, i) {
+        return k && !folded[i];
+      });
+    }
+    function hiddenByFold(i) {
+      for (var p = parents[i]; p >= 0; p = parents[p]) if (folded[p]) return true;
+      return false;
+    }
+    function applyFold() {
+      rows.forEach(function (row, i) {
+        row.hidden = hiddenByFold(i);
+        if (!hasKids[i]) return;
+        var f = !!folded[i];
+        var b = row.lastChild;
+        var label = f ? t("js.outlineUnfold", "展开这一节") : t("js.outlineFold", "收起这一节");
+        row.classList.toggle("is-folded", f);
+        b.setAttribute("aria-expanded", String(!f));
+        b.setAttribute("aria-label", label);
+        b.title = label;
+      });
+      if (allBtn) allBtn.textContent = anyOpen() ? t("js.outlineFoldAll", "全部收起") : t("js.outlineUnfoldAll", "全部展开");
+      current = -2;
+      spy();
+    }
 
     card.hidden = false;
     root.setAttribute("data-reading", "");
@@ -1970,16 +2051,19 @@
       }
       if (idx === current) return;
       current = idx;
+      // 读到的那一节被收起来了，就亮它所在的那一章
+      var shown = idx;
+      while (shown >= 0 && rows[shown].hidden) shown = parents[shown];
       links.forEach(function (a, j) {
-        a.classList.toggle("is-active", j === idx);
-        if (j === idx) a.setAttribute("aria-current", "location");
+        a.classList.toggle("is-active", j === shown);
+        if (j === shown) a.setAttribute("aria-current", "location");
         else a.removeAttribute("aria-current");
       });
       // 大纲比屏幕高、自己在滚的时候，让亮着的那条留在看得见的地方（只滚大纲，不动页面）
-      var a = links[idx];
-      if (a && card.open && list.scrollHeight > list.clientHeight) {
-        var at = a.offsetTop - list.offsetTop;
-        if (at < list.scrollTop + 8 || at + a.offsetHeight > list.scrollTop + list.clientHeight - 8) {
+      var row = rows[shown];
+      if (row && card.open && list.scrollHeight > list.clientHeight) {
+        var at = row.offsetTop - list.offsetTop;
+        if (at < list.scrollTop + 8 || at + row.offsetHeight > list.scrollTop + list.clientHeight - 8) {
           list.scrollTop = Math.max(0, at - list.clientHeight / 3);
         }
       }
@@ -2004,7 +2088,7 @@
         spy();
       }
     });
-    spy();
+    applyFold();
   }
 
   /* ------------------------------------------------- 阅读进度与预计时长 */
