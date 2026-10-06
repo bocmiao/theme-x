@@ -1499,6 +1499,17 @@ a.x-avatar:hover, .x-avatar-link:hover .x-avatar { opacity: 0.85; }
   font-weight: 800;
 }
 
+.x-detail-readtime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 12px;
+  color: var(--text-secondary);
+  font-size: 0.933rem;
+}
+.x-detail-readtime[hidden] { display: none; }
+.x-detail-readtime iconify-icon { font-size: 1.05em; }
+
 .x-summary {
   margin: 16px 0 20px;
   padding: 16px;

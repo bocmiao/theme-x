@@ -341,13 +341,13 @@ spec:
         - $formkit: select
           name: read_time
           label: 字数与阅读时长
-          value: "on"
-          help: 中文按每分钟 400 字、英文按每分钟 220 词估算
+          value: "all"
+          help: 普通文章显示在标题下面（「全文 3,200 字 · 阅读约 8 分钟」），长文显示在吸顶栏里。中文按每分钟 400 字、英文按每分钟 220 词估算，代码块不算字数
           options:
-            - label: 只在「长文」模板里显示
-              value: "on"
             - label: 所有文章都显示
               value: "all"
+            - label: 只在「长文」模板里显示
+              value: "on"
             - label: 不显示
               value: "off"
         - $formkit: select

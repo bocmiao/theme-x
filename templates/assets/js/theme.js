@@ -2094,13 +2094,26 @@
   /* ------------------------------------------------- 阅读进度与预计时长 */
   function initReading() {
     var prose = $("[data-prose]");
-    var readTime = $("[data-read-time]");
-    if (prose && readTime) {
-      var text = prose.innerText || "";
+    var readTimes = $$("[data-read-time]");
+    if (prose && readTimes.length) {
+      // 代码块、目录、链接卡片不算字数：那些不是一个字一个字读的
+      var copy = prose.cloneNode(true);
+      $$("pre, .x-code, .x-toc, .x-linkcard, script, style, noscript", copy).forEach(function (el) {
+        el.remove();
+      });
+      var text = copy.textContent || "";
       var cjk = (text.match(/[一-龥]/g) || []).length;
       var words = (text.replace(/[一-龥]/g, " ").match(/\b\w+\b/g) || []).length;
       var minutes = Math.max(1, Math.round(cjk / 400 + words / 220));
-      readTime.textContent = t("js.readTime", "{0} 字 · 约 {1} 分钟", (cjk + words).toLocaleString(), minutes);
+      var count = (cjk + words).toLocaleString();
+      readTimes.forEach(function (el) {
+        var top = el.getAttribute("data-read-time") === "top";
+        var slot = $("[data-read-time-text]", el) || el;
+        slot.textContent = top
+          ? t("js.readTimeTop", "全文 {0} 字 · 阅读约 {1} 分钟", count, minutes)
+          : t("js.readTime", "{0} 字 · 约 {1} 分钟", count, minutes);
+        el.hidden = false;
+      });
     }
 
     // 只有正文页才有进度条，列表页滚动条本来就说明不了「读到哪」

@@ -132,6 +132,11 @@
           </div>
 
           <h1 class="x-detail-title" th:text="${post.spec.title}"></h1>
+          <!--/* 全文字数和阅读时长：读之前就知道有多长。数字由 theme.js 的 initReading 按正文算好再显示 */-->
+          <div class="x-detail-readtime" data-read-time="top" hidden th:if="${po?.read_time == 'all'}">
+            <iconify-icon icon="ri:time-line" aria-hidden="true"></iconify-icon>
+            <span data-read-time-text></span>
+          </div>
 
           <th:block th:replace="~{modules/series :: card(post=${post})}"></th:block>
 
@@ -184,7 +189,6 @@
             <span>·</span>
             <strong data-format-count="keep" th:text="${post.stats.visit}"></strong>
             <span th:text="${#messages.msg(post.stats.visit == 1 ? 'post.viewSuffix' : 'post.viewsSuffix')}">次查看</span>
-            <span class="x-meta-readtime" data-read-time th:if="${po?.read_time == 'all'}"></span>
           </div>
 
 
